@@ -1,0 +1,41 @@
+{
+  "$comment": "Source of truth for the OTW Radio grid. The sync service builds AzuraCast playlists from this file and the site renders its schedule page from it. Times are 24h HHMM in the station time zone.",
+  "station": {
+    "name": "OTW Radio",
+    "shortcode": "otw_radio",
+    "timezone": "America/New_York"
+  },
+  "daily": [
+    { "start": "0000", "end": "1000", "block": "otw_playlist" },
+    { "start": "1000", "end": "1200", "block": "weekly_feature", "airing": "premiere" },
+    { "start": "1200", "end": "1500", "block": "guest_curator" },
+    { "start": "1500", "end": "1700", "block": "weekly_feature", "airing": "repeat" },
+    { "start": "1700", "end": "2400", "block": "otw_playlist" }
+  ],
+  "blocks": {
+    "otw_playlist": {
+      "title": "OTW Playlist",
+      "description": "Rotation of OTW roster and emerging artists.",
+      "azuracast": { "playlist": "OTW Playlist", "type": "default", "order": "shuffle" }
+    },
+    "weekly_feature": {
+      "title": "OTW Weekly Features",
+      "description": "A different recorded feature each weekday, premiered at 10am and repeated at 3pm.",
+      "azuracast": { "playlistPrefix": "Feature", "order": "sequential", "backendOptions": ["interrupt", "loop_once"] }
+    },
+    "guest_curator": {
+      "title": "Guest Curator Playlist",
+      "description": "Three hours picked and introduced by a guest artist.",
+      "azuracast": { "playlistPrefix": "Guest Curator", "order": "sequential", "backendOptions": ["interrupt", "loop_once"] }
+    }
+  },
+  "features": {
+    "1": { "slug": "weekly-recap", "title": "OTW Weekly Recap", "description": "The week in OTW: news, releases and clips." },
+    "2": { "slug": "chefs-choice", "title": "Chef's Choice", "description": "Curator picks. Format to confirm." },
+    "3": { "slug": "touring-artists", "title": "OTW Touring Artists", "description": "Artists on the road this week, with their tour dates." },
+    "4": { "slug": "gwlmmwlg", "title": "GWLMMWLG", "description": "Format to confirm." },
+    "5": { "slug": "artist-interview", "title": "Artist Interview", "description": "One long-form artist interview." },
+    "6": { "slug": "live-from-the-rooftop", "title": "Live From the Rooftop", "description": "Proposed. Session performances from the OTW series.", "proposed": true },
+    "7": { "slug": "best-of-the-week", "title": "Best of the Week", "description": "Proposed. Repeats of the weekday features.", "proposed": true }
+  }
+}

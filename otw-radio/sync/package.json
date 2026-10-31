@@ -1,0 +1,19 @@
+{
+  "name": "otw-radio-sync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pulls scheduled OTW shows from AIMC and loads them into AzuraCast as premieres.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "sync": "tsx src/index.ts",
+    "setup-station": "tsx src/index.ts setup"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}

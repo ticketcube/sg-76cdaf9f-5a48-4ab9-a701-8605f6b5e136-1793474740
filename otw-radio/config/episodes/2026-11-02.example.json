@@ -1,0 +1,15 @@
+{
+  "$comment": "One file per air date. Producers list the AIMC assets for that day's feature and guest curator blocks, in play order. The sync service resolves each AIMC asset, extracts audio, uploads it to AzuraCast and schedules it. Asset IDs below are real AIMC examples.",
+  "date": "2026-11-02",
+  "feature": {
+    "title": "OTW Weekly Recap",
+    "items": [
+      { "aimcAssetId": "asset:uuid:b19d0bad-efe8-46e7-a3d8-0b2b2cd49cbb", "title": "Wilderado Live | Live From The Rooftop", "artist": "Wilderado", "video": true },
+      { "aimcAssetId": "asset:uuid:fadacbea-c128-4ecd-b701-eae2361a0ba7", "title": "Bassh Interview", "artist": "Bassh", "video": true }
+    ]
+  },
+  "guestCurator": {
+    "curator": "TBD",
+    "items": []
+  }
+}
