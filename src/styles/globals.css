@@ -214,7 +214,7 @@ body {
   }
   
   .artist-card {
-    @apply content-card group cursor-pointer;
+    @apply content-card cursor-pointer;
   }
   
   .artist-card:hover {
