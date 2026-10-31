@@ -1,3 +1,4 @@
+import "dotenv/config";
 import path from "node:path";
 import { aimc } from "./aimc.js";
 import { extractAudio } from "./audio.js";
