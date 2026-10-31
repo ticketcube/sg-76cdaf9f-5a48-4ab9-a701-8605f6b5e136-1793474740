@@ -6,19 +6,51 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 
+interface NowPlayingData {
+  now_playing?: {
+    song?: {
+      title: string;
+      artist: string;
+    };
+  };
+  live?: {
+    is_live: boolean;
+    streamer_name?: string;
+  };
+}
+
 export function AudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
+  const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const streamUrl = "http://172.233.147.13:8000/radio.mp3";
+  const streamUrl = "http://onestowatch.live:8000/radio.mp3";
+  const nowPlayingUrl = "https://onestowatch.live/api/nowplaying/otw_radio";
 
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume / 100;
     }
   }, [volume]);
+
+  useEffect(() => {
+    const fetchNowPlaying = async () => {
+      try {
+        const response = await fetch(nowPlayingUrl);
+        const data = await response.json();
+        setNowPlaying(data);
+      } catch (error) {
+        console.error("Failed to fetch now playing data:", error);
+      }
+    };
+
+    fetchNowPlaying();
+    const interval = setInterval(fetchNowPlaying, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -37,8 +69,12 @@ export function AudioPlayer() {
     setIsMuted(!isMuted);
   };
 
+  const isLive = nowPlaying?.live?.is_live ?? false;
+  const song = nowPlaying?.now_playing?.song;
+  const streamerName = nowPlaying?.live?.streamer_name;
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border backdrop-blur-xl z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-card/95 border-t border-border backdrop-blur-xl z-50">
       <div className="container py-4">
         <div className="flex items-center gap-4 md:gap-6">
           <Button
@@ -54,11 +90,21 @@ export function AudioPlayer() {
               <Badge variant="destructive" className="bg-primary text-primary-foreground font-mono text-xs">
                 LIVE
               </Badge>
-              <span className="text-sm font-medium truncate">OTW Playlist</span>
+              {isLive && streamerName && (
+                <span className="text-xs text-primary font-mono">
+                  {streamerName}
+                </span>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground truncate">
-              Now Playing: Ones To Watch 24/7
-            </p>
+            {song ? (
+              <p className="text-sm font-medium truncate">
+                {song.artist} - {song.title}
+              </p>
+            ) : (
+              <p className="text-sm font-medium truncate">
+                OTW Radio
+              </p>
+            )}
           </div>
 
           <div className="hidden md:flex items-center gap-3 w-32">
