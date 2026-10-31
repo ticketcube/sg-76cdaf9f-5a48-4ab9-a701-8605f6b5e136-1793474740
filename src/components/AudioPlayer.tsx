@@ -24,10 +24,15 @@ export function AudioPlayer() {
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
   const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null);
+  const [mounted, setMounted] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const streamUrl = "http://onestowatch.live:8000/radio.mp3";
   const nowPlayingUrl = "https://onestowatch.live/api/nowplaying/otw_radio";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -36,13 +41,19 @@ export function AudioPlayer() {
   }, [volume]);
 
   useEffect(() => {
+    if (!mounted) return;
+
     const fetchNowPlaying = async () => {
       try {
         const response = await fetch(nowPlayingUrl);
+        if (!response.ok) {
+          console.warn("Failed to fetch now playing data:", response.status);
+          return;
+        }
         const data = await response.json();
         setNowPlaying(data);
       } catch (error) {
-        console.error("Failed to fetch now playing data:", error);
+        console.warn("Could not fetch now playing data:", error);
       }
     };
 
@@ -50,7 +61,7 @@ export function AudioPlayer() {
     const interval = setInterval(fetchNowPlaying, 15000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [mounted, nowPlayingUrl]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -68,6 +79,8 @@ export function AudioPlayer() {
     audioRef.current.muted = !isMuted;
     setIsMuted(!isMuted);
   };
+
+  if (!mounted) return null;
 
   const isLive = nowPlaying?.live?.is_live ?? false;
   const song = nowPlaying?.now_playing?.song;
