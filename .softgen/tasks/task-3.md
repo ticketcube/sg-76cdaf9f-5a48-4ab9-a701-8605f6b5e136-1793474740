@@ -1,21 +1,21 @@
-
 ---
-title: Video Premiere Takeover Component
+title: "Fans: Watch mode and live video takeover"
 status: todo
 priority: medium
 type: feature
+tags: [fans, video, aimc]
 ---
 
 ## Notes
-Following the "Audio first, video when it earns it" rule. When a live interview or venue show airs, a video stream appears mirroring the LiveNation.tv plan. 
+Audio first, video when it earns it. Two cases: (1) Watch mode for recorded AIMC assets, where the track's AzuraCast custom field `has_video` is `"1"`; (2) a live venue show takeover later, via Mux or AWS IVS. Live venue shows air once and are never replayed unless the artist opts in. Depends on task 6.
 
 ## Checklist
-- [ ] Create a Hero Video section at the top of the homepage that is conditionally visible
-- [ ] Include a placeholder video player (e.g., standard HTML5 player or mock iframe component)
-- [ ] Add a prominent "Watch Live" toggle or badge that expands the hero section when clicked
-- [ ] Build the UI to transition smoothly between the default "audio-only" state (showing a hero image or currently playing artist art) and the "video-active" state
-- [ ] Add 2-3 "Upcoming Live Streams" promotional cards below the player for upcoming venue shows
+- [ ] Server route `/api/video?asset={aimc_asset_id}` that calls AIMC with server-only `AIMC_API_URL` and `AIMC_API_KEY` and returns a short-lived MP4 proxy URL; stub the AIMC call behind one function with a TODO until the AIMC team confirms the route
+- [ ] Show a "Watch" toggle on the now-playing card only when `now_playing.song.custom_fields.has_video` is `"1"`
+- [ ] Play the proxy muted in a 16:9 frame starting at `elapsed`, while the radio audio keeps playing; re-sync when drift is over 2 seconds, with a fixed offset setting for stream delay
+- [ ] Smooth transition between the audio-only state (artist art) and the video state
+- [ ] 2 or 3 "Upcoming live shows" cards below the player (placeholder data in `otw-radio/config/live-shows.json`)
 
 ## Acceptance
-- The hero area can switch between a standard graphic view and a dominant video player view.
-- Upcoming shows are visible to drive discovery.
+- On a track with video, Watch shows the clip in step with the audio within 2 seconds.
+- No AIMC key or S3 URL with long-lived credentials reaches the browser.
