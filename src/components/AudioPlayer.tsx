@@ -27,8 +27,12 @@ export function AudioPlayer() {
   const [mounted, setMounted] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const streamUrl = "http://onestowatch.live:8000/radio.mp3";
-  const nowPlayingUrl = "https://onestowatch.live/api/nowplaying/otw_radio";
+  // AzuraCast serves the stream over https at /listen/{shortcode}/radio.mp3. The raw Icecast
+  // port (http://…:8000) is blocked by browsers as mixed content on an https site.
+  const azuracastUrl = (process.env.NEXT_PUBLIC_AZURACAST_URL ?? "https://radio.onestowatch.live").replace(/\/$/, "");
+  const shortcode = process.env.NEXT_PUBLIC_STATION_SHORTCODE ?? "otw_radio";
+  const streamUrl = `${azuracastUrl}/listen/${shortcode}/radio.mp3`;
+  const nowPlayingUrl = `${azuracastUrl}/api/nowplaying/${shortcode}`;
 
   useEffect(() => {
     setMounted(true);

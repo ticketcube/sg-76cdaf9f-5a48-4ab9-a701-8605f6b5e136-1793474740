@@ -66,7 +66,7 @@ Run `sync` for each air date a day or more ahead, by hand or from a nightly cron
 
 - [x] Grid and feature config
 - [x] Sync service: AzuraCast playlists, uploads, scheduling, custom fields (typechecked, dry-run tested)
-- [ ] AIMC REST routes in `sync/src/aimc.ts` are placeholders until the AIMC team confirms them
+- [x] AIMC routes in `sync/src/aimc.ts` (Media Lake API, `X-API-Key` auth). Needs `AIMC_API_URL` and an API key in `.env`
 - [ ] Site: build from `SOFTGEN_PROMPT.md`
 - [ ] Licensing: SoundExchange Notice of Use and PRO licenses before the first public stream
 

@@ -1,12 +1,14 @@
 import { config } from "./config.js";
 
 /**
- * AIMC is the OTW media lake (S3-backed). Assets carry tags such as Artist, Series, Format
- * and Artist Spotify ID, plus representations (an MP4 proxy and a thumbnail) and media info
- * (durationSec, codecs).
+ * AIMC is the OTW media lake, an AWS Media Lake deployment (S3-backed). Assets carry tags
+ * such as Artist, Series, Format and Artist Spotify ID, plus derived representations (an MP4
+ * proxy and a thumbnail) and media info.
  *
- * The two routes below are placeholders: replace them with the real AIMC REST endpoints
- * for "get asset" and "get presigned download link" once the AIMC team confirms them.
+ * Routes follow the Media Lake API (aws-solutions-library-samples/guidance-for-medialake-on-aws):
+ *   GET  /assets/{inventoryId}              -> { data: { asset } }
+ *   POST /assets/generate-presigned-url     -> { data: { presigned_url, expires_in } }
+ * Auth is an AIMC API key in the X-API-Key header.
  */
 
 export interface AimcAsset {
@@ -18,23 +20,73 @@ export interface AimcAsset {
   representations: { id: string; purpose: "proxy" | "thumbnail" | string; format: string }[];
 }
 
-async function call<T>(route: string): Promise<T> {
+/** The subset of the raw Media Lake asset record the radio reads. */
+interface RawAsset {
+  InventoryID: string;
+  DigitalSourceAsset?: {
+    Type?: string;
+    MainRepresentation?: { StorageInfo?: { PrimaryLocation?: { ObjectKey?: { Name?: string } } } };
+  };
+  DerivedRepresentations?: {
+    ID: string;
+    Purpose: string;
+    Format: string;
+    VideoSpec?: { Duration?: number };
+    AudioSpec?: { Duration?: number };
+  }[];
+  Metadata?: { CustomMetadata?: Record<string, unknown> };
+}
+
+async function call<T>(route: string, init?: { method: string; body: unknown }): Promise<T> {
   const res = await fetch(`${config.aimc.baseUrl()}${route}`, {
-    headers: { Authorization: `Bearer ${config.aimc.apiKey()}`, Accept: "application/json" },
+    method: init?.method ?? "GET",
+    headers: {
+      "X-API-Key": config.aimc.apiKey(),
+      Accept: "application/json",
+      ...(init ? { "Content-Type": "application/json" } : {}),
+    },
+    body: init ? JSON.stringify(init.body) : undefined,
   });
   if (!res.ok) throw new Error(`AIMC ${route} failed: ${res.status} ${await res.text()}`);
-  return (await res.json()) as T;
+  const json = (await res.json()) as { data?: T };
+  return json.data as T;
+}
+
+/** Flattens custom metadata into string tags, keeping only scalar values. */
+function tagsOf(raw: RawAsset): Record<string, string> {
+  const tags: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw.Metadata?.CustomMetadata ?? {})) {
+    if (typeof value === "string" || typeof value === "number") tags[key] = String(value);
+  }
+  return tags;
 }
 
 export const aimc = {
-  // TODO(aimc): confirm route.
-  getAsset: (id: string) => call<AimcAsset>(`/assets/${encodeURIComponent(id)}`),
+  async getAsset(id: string): Promise<AimcAsset> {
+    const { asset: raw } = await call<{ asset: RawAsset }>(`/assets/${encodeURIComponent(id)}`);
+    const reps = raw.DerivedRepresentations ?? [];
+    const duration = reps.map((r) => r.VideoSpec?.Duration ?? r.AudioSpec?.Duration).find((d) => d !== undefined);
+    return {
+      id: raw.InventoryID,
+      name: raw.DigitalSourceAsset?.MainRepresentation?.StorageInfo?.PrimaryLocation?.ObjectKey?.Name ?? raw.InventoryID,
+      type: (raw.DigitalSourceAsset?.Type ?? "Video") as AimcAsset["type"],
+      tags: tagsOf(raw),
+      media: duration === undefined ? undefined : { durationSec: duration },
+      representations: reps.map((r) => ({ id: r.ID, purpose: r.Purpose, format: r.Format })),
+    };
+  },
 
-  // TODO(aimc): confirm route. Should return a short-lived presigned URL.
-  async getDownloadUrl(id: string, representationId?: string): Promise<string> {
-    const query = representationId ? `?representation=${encodeURIComponent(representationId)}` : "";
-    const result = await call<{ url: string }>(`/assets/${encodeURIComponent(id)}/download${query}`);
-    return result.url;
+  /**
+   * Short-lived presigned URL for the original file, or for a derived representation when
+   * `purpose` is given (for example "proxy"). AIMC falls back to the original if the asset has
+   * no representation with that purpose.
+   */
+  async getDownloadUrl(id: string, purpose?: string, expirationSec = 3600): Promise<string> {
+    const result = await call<{ presigned_url: string }>("/assets/generate-presigned-url", {
+      method: "POST",
+      body: { inventory_id: id, expiration_time: expirationSec, ...(purpose ? { purpose } : {}) },
+    });
+    return result.presigned_url;
   },
 
   /** The MP4 proxy is smaller than the original and is what the site plays for video premieres. */

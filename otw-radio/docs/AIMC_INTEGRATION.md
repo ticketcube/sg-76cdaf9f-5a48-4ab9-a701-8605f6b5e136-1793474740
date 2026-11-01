@@ -30,12 +30,14 @@ AIMC is the OTW media lake and the warehouse for every show that airs "live" but
 
 ## Data contract
 
-The sync service needs two calls from AIMC. Both are stubbed in `sync/src/aimc.ts` until the real routes are confirmed:
+AIMC runs AWS Media Lake. The sync service uses two of its API calls, implemented in `sync/src/aimc.ts`. Both authenticate with an AIMC API key in the `X-API-Key` header.
 
-| Call | Returns | Used for |
-| --- | --- | --- |
-| Get asset by ID | Tags, media info, representations | Title, artist, proxy ID |
-| Get download link (asset or representation) | Short-lived presigned URL | ffmpeg reads audio from it; the site plays the proxy from it |
+| Call | Route | Returns | Used for |
+| --- | --- | --- | --- |
+| Get asset by ID | `GET /assets/{inventoryId}` | `data.asset`: tags, media info, representations | Title, artist, proxy ID |
+| Get download link | `POST /assets/generate-presigned-url` with `{ "inventory_id", "expiration_time", "purpose"? }` | `data.presigned_url` | ffmpeg reads audio from it; the site plays the proxy (`"purpose": "proxy"`) from it |
+
+`AIMC_API_URL` is the Media Lake API base URL (the API Gateway stage URL, without a trailing slash). Create the API key in the AIMC admin settings.
 
 Tags the radio uses: `Artist`, `Series`, `Format`, `Artist Spotify ID`. Adding a `Radio Cleared` tag (yes or no) in AIMC would let producers see at a glance which assets have the artist and guest releases needed to air.
 
