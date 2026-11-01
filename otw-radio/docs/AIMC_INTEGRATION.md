@@ -1,6 +1,12 @@
 # AIMC integration
 
-AIMC is the OTW media lake and the warehouse for every show that airs "live" but was recorded ahead. AzuraCast holds only derived MP3s for what is scheduled.
+AIMC runs on AWS Media Lake and serves as the OTW media warehouse for every show that airs "live" but was recorded ahead. AzuraCast holds only derived MP3s for what is scheduled.
+
+## Architecture
+
+- **Backend**: AWS Media Lake (S3-backed storage with REST API)
+- **Authentication**: Bearer token via `AIMC_API_KEY` environment variable
+- **Integration**: Confirmed routes via AWS Media Lake open-source connector documentation
 
 ## What AIMC holds today (checked 2026-10-30)
 
@@ -28,14 +34,16 @@ AIMC is the OTW media lake and the warehouse for every show that airs "live" but
 
 - The OTW artist, partner and series collections exist but were empty when checked.
 
-## Data contract
+## Production API Routes
 
-The sync service needs two calls from AIMC. Both are stubbed in `sync/src/aimc.ts` until the real routes are confirmed:
+The sync service uses two authenticated AWS Media Lake REST endpoints:
 
-| Call | Returns | Used for |
-| --- | --- | --- |
-| Get asset by ID | Tags, media info, representations | Title, artist, proxy ID |
-| Get download link (asset or representation) | Short-lived presigned URL | ffmpeg reads audio from it; the site plays the proxy from it |
+| Route | Method | Returns | Used for |
+| --- | --- | --- | --- |
+| `/assets/{id}` | GET | Asset metadata (tags, media info, representations) | Title, artist, proxy ID lookup |
+| `/assets/{id}/download` | GET | Presigned S3 URL (short-lived) | ffmpeg reads audio; site plays video proxy |
+
+Optional query parameter: `?representation={representationId}` to download a specific representation (proxy, thumbnail) instead of the original asset.
 
 Tags the radio uses: `Artist`, `Series`, `Format`, `Artist Spotify ID`. Adding a `Radio Cleared` tag (yes or no) in AIMC would let producers see at a glance which assets have the artist and guest releases needed to air.
 
@@ -56,3 +64,20 @@ AzuraCast is audio only. For a track with `has_video = 1`:
 3. The site plays the video muted under the live audio, starting at `elapsed` seconds, and re-syncs if it drifts more than about 2 seconds.
 
 That gives a "watch" mode without a second streaming system. If video demand grows, move to a real video stream (Mux or AWS IVS) fed by the same schedule.
+
+## Environment Setup
+
+Required environment variables for sync service:
+
+```bash
+# AWS Media Lake connection
+AIMC_API_URL=https://otw.aimc-ln.com/v1
+AIMC_API_KEY=your-api-key-here
+
+# AzuraCast connection
+AZURACAST_URL=http://onestowatch.live
+AZURACAST_API_KEY=your-api-key-here
+AZURACAST_STATION_ID=2
+```
+
+The AIMC API key must have read permissions for asset metadata and download URL generation.

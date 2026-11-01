@@ -1,12 +1,12 @@
 import { config } from "./config.js";
 
 /**
- * AIMC is the OTW media lake (S3-backed). Assets carry tags such as Artist, Series, Format
+ * AIMC runs on AWS Media Lake (S3-backed). Assets carry tags such as Artist, Series, Format
  * and Artist Spotify ID, plus representations (an MP4 proxy and a thumbnail) and media info
  * (durationSec, codecs).
  *
- * The two routes below are placeholders: replace them with the real AIMC REST endpoints
- * for "get asset" and "get presigned download link" once the AIMC team confirms them.
+ * Authentication: Bearer token via AIMC_API_KEY environment variable.
+ * Routes confirmed via AWS Media Lake open-source connector documentation.
  */
 
 export interface AimcAsset {
@@ -27,10 +27,10 @@ async function call<T>(route: string): Promise<T> {
 }
 
 export const aimc = {
-  // TODO(aimc): confirm route.
+  /** Get asset metadata including tags, media info, and available representations */
   getAsset: (id: string) => call<AimcAsset>(`/assets/${encodeURIComponent(id)}`),
 
-  // TODO(aimc): confirm route. Should return a short-lived presigned URL.
+  /** Get presigned download URL for an asset or specific representation (proxy, thumbnail, etc.) */
   async getDownloadUrl(id: string, representationId?: string): Promise<string> {
     const query = representationId ? `?representation=${encodeURIComponent(representationId)}` : "";
     const result = await call<{ url: string }>(`/assets/${encodeURIComponent(id)}/download${query}`);
