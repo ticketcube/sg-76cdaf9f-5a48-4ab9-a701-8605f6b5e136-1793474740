@@ -8,15 +8,19 @@ Build **OTW Radio**, the web player and schedule for a 24/7 internet radio stati
 
 ## Stack
 
-- Next.js (App Router) with TypeScript and Tailwind CSS.
+- Next.js (the existing repo uses the pages router) with TypeScript and Tailwind CSS.
 - No database at launch. All data comes from the AzuraCast public API and from `config/schedule.json` in the repo.
 - Environment variables: `NEXT_PUBLIC_AZURACAST_URL` (for example `https://radio.onestowatch.live`), `NEXT_PUBLIC_STATION_SHORTCODE` (`otw_radio`), and server-only `AIMC_API_URL` and `AIMC_API_KEY`.
 
 ## Data sources
 
-1. **Now playing.** `GET {AZURACAST_URL}/api/nowplaying/{shortcode}`. Use `now_playing.song` (title, artist, art, `custom_fields`), `now_playing.elapsed`, `now_playing.duration`, `playing_next`, `song_history`, `listeners.current`, `live.is_live`, `live.streamer_name`, and `station.hls_url` and `station.mounts` for stream URLs. Poll every 15 seconds. A websocket upgrade can come later.
+1. **Now playing.** `GET {AZURACAST_URL}/api/nowplaying/{shortcode}`. Use `now_playing.song` (title, artist, art, `custom_fields`), `now_playing.elapsed`, `now_playing.duration`, `song_history`, `listeners.current`, `live.is_live`, `live.streamer_name`, and `station.hls_url` and `station.mounts` for stream URLs. Poll every 15 seconds. A websocket upgrade can come later.
 2. **Schedule.** Read `config/schedule.json`. It defines a daily grid (`daily`: start, end, block), block titles (`blocks`), and a feature per ISO weekday (`features`, 1 = Monday ... 7 = Sunday). Today's 10:00 and 15:00 blocks show that weekday's feature title. Times are in `station.timezone`. Show them in the listener's local time with the station time beside them.
 3. **Video.** When `now_playing.song.custom_fields.has_video` is `"1"`, call a server route `/api/video?asset={custom_fields.aimc_asset_id}`. That route calls AIMC with the server-only key and returns a short-lived URL to the asset's MP4 proxy. Stub the AIMC call behind one function with a TODO, because the route is not confirmed yet.
+
+## Who does what
+
+AzuraCast makes the sound: tracks, playlists, rotation, the 10am and 3pm feature schedule, host streaming accounts and live takeover, and play logs for royalties. This site is everything people see: player, schedule, feature, host and artist pages, watch mode and embeds. Fans never see the AzuraCast UI, and no AzuraCast credentials go in the site. See `docs/SOFTGEN_TASKS.md` for the task list.
 
 ## Pages
 
@@ -24,7 +28,7 @@ Build **OTW Radio**, the web player and schedule for a 24/7 internet radio stati
    - A large now-playing card: album art, artist, title, a LIVE badge when `live.is_live` is true, otherwise the current block name, such as "OTW WEEKLY FEATURES: ARTIST INTERVIEW".
    - A play and pause button for the HLS stream (use hls.js, with a fallback to the MP3 mount). Add volume and a listener count.
    - **Watch mode.** When the current track has video, show a "Watch" toggle. It plays the AIMC proxy muted in a 16:9 frame, starting at `elapsed` seconds, while the radio audio keeps playing. Re-sync when drift is over 2 seconds, and allow a fixed offset for stream delay.
-   - Up next, and the last 5 tracks.
+   - The next programme block (never the next song title, because the licenses forbid advance song lists), and the last 5 tracks.
    - Today's schedule as a list, with the current block highlighted.
 2. **Schedule `/schedule`.** The daily grid and the weekly features, laid out like the station's promo graphic: black header bars with white condensed uppercase text, times on the left and block names on the right. Mark the Saturday and Sunday features "Coming soon" while `proposed` is true.
 3. **Features `/features/[slug]`.** One page per weekly feature: title, description, airtimes (10am and 3pm on its day), and a list of recent episodes (placeholder data for now).
