@@ -138,17 +138,18 @@ function getCurrentTimeBlock(schedule: Array<{ start: string; end: string }>): n
 }
 
 function parseAzuraCastTime(timeStr: string): number {
-  const match = timeStr.match(/(\d+):(\d+)(am|pm)/i);
-  if (!match) return 0;
-  
-  let hours = parseInt(match[1]);
-  const minutes = parseInt(match[2]);
-  const period = match[3].toLowerCase();
-  
-  if (period === 'pm' && hours !== 12) hours += 12;
-  if (period === 'am' && hours === 12) hours = 0;
-  
-  return hours * 100 + minutes;
+  // AzuraCast sends ISO timestamps like "2026-11-02T10:00:00-05:00"
+  // Parse to Date and extract hours/minutes in ET
+  try {
+    const date = new Date(timeStr);
+    const etDate = new Date(date.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const hours = etDate.getHours();
+    const minutes = etDate.getMinutes();
+    return hours * 100 + minutes;
+  } catch (error) {
+    console.error(`❌ Failed to parse time "${timeStr}":`, error);
+    return 0;
+  }
 }
 
 function extractWeeklyFeatures(playlists: AzuraCastPlaylist[]): Record<string, { title: string; description: string }> {

@@ -41,8 +41,6 @@ interface ScheduleData {
       end: string;
       type: string;
       is_now: boolean;
-      start_parsed: number;
-      end_parsed: number;
     }>;
   };
 }
@@ -137,7 +135,7 @@ export function Schedule() {
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [mounted, schedule]);
+  }, [mounted]);
 
   if (!mounted || !schedule) {
     return (
@@ -175,9 +173,6 @@ export function Schedule() {
                   </div>
                   <div className="text-muted-foreground">
                     {item.start} - {item.end} ({item.type})
-                  </div>
-                  <div className="text-muted-foreground text-[10px]">
-                    Parsed: {item.start_parsed} - {item.end_parsed}
                   </div>
                 </div>
               ))}
