@@ -9,6 +9,9 @@ interface ScheduleBlock {
   end: string;
   block: string;
   airing?: string;
+  playlist_id?: string | null;
+  playlist_name?: string | null;
+  playlist_description?: string | null;
 }
 
 interface ScheduleData {
@@ -192,6 +195,18 @@ export function Schedule() {
                   <p className="text-sm text-muted-foreground">
                     {blockInfo?.description || ""}
                   </p>
+                  {item.playlist_name && (
+                    <div className="mt-2 pt-2 border-t border-border/50">
+                      <p className="text-sm font-medium text-foreground">
+                        Playing: {item.playlist_name}
+                      </p>
+                      {item.playlist_description && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {item.playlist_description}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );
