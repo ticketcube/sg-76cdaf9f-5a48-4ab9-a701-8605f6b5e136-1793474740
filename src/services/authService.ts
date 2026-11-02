@@ -137,6 +137,8 @@ export const authService = {
       if (authUser && data.user) {
         await supabase.from("user_profiles").insert({
           user_id: data.user.id,
+          email: email,
+          username: email.split("@")[0],
           display_name: metadata?.display_name || null,
           role: metadata?.role || null,
           is_admin: false
