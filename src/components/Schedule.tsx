@@ -33,6 +33,14 @@ interface ScheduleData {
       proposed?: boolean;
     };
   };
+  debug?: {
+    azuracast_playlists_count: number;
+    azuracast_playlists: Array<{
+      id: number;
+      name: string;
+      schedule_items_count: number;
+    }>;
+  };
 }
 
 interface WeeklyFeature {
@@ -96,6 +104,7 @@ export function Schedule() {
   const [schedule, setSchedule] = useState<ScheduleData | null>(null);
   const [currentBlock, setCurrentBlock] = useState(-1);
   const [mounted, setMounted] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -145,6 +154,35 @@ export function Schedule() {
 
   return (
     <div className="bg-card rounded-2xl overflow-hidden">
+      {schedule?.debug && (
+        <div className="border-b border-border p-4 bg-muted/50">
+          <button
+            onClick={() => setShowDebug(!showDebug)}
+            className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showDebug ? "▼" : "▶"} Debug: {schedule.debug.azuracast_playlists_count} playlists from AzuraCast
+          </button>
+          {showDebug && (
+            <div className="mt-3 space-y-2 text-xs font-mono">
+              {schedule.debug.azuracast_playlists.map((p) => (
+                <div key={p.id} className="bg-background p-2 rounded border border-border">
+                  <div className="font-semibold">#{p.id}: {p.name}</div>
+                  <div className="text-muted-foreground">Schedule items: {p.schedule_items_count}</div>
+                </div>
+              ))}
+              <div className="mt-4 bg-background p-2 rounded border border-border">
+                <div className="font-semibold mb-2">Matched slots:</div>
+                {schedule.daily.map((slot, i) => (
+                  <div key={i} className="text-muted-foreground">
+                    {slot.start}-{slot.end}: {slot.playlist_name || "❌ No match"}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
       <Tabs defaultValue="today" className="w-full">
         <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-14 px-6">
           <TabsTrigger value="today" className="font-semibold data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
