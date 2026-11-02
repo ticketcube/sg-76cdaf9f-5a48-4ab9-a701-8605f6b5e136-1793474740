@@ -9,8 +9,9 @@ export interface AuthUser {
 }
 
 export interface UserProfile {
-  id: string;
   user_id: string;
+  email: string;
+  username: string;
   display_name: string | null;
   role: "otwl-dj" | "otwl-podcast" | "otwl-staff" | null;
   is_admin: boolean;
@@ -67,7 +68,7 @@ export const authService = {
       return null;
     }
 
-    return data as UserProfile;
+    return data;
   },
 
   // Get current user with profile
@@ -284,10 +285,10 @@ export const authService = {
       const users = data.map(profile => ({
         user: {
           id: profile.user_id,
-          email: "", // Will be populated from auth.users if needed
+          email: profile.email,
           created_at: profile.created_at
         },
-        profile: profile as UserProfile
+        profile: profile
       }));
 
       return { users, error: null };

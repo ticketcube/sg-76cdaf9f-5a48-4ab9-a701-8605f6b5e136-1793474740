@@ -54,6 +54,8 @@ export default async function handler(
       .from("user_profiles")
       .insert({
         user_id: authData.user.id,
+        email: email,
+        username: email.split("@")[0], // Use email prefix as default username
         display_name: displayName,
         role: role,
         is_admin: isAdmin || false

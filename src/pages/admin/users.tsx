@@ -22,8 +22,9 @@ interface User {
     created_at: string;
   };
   profile: {
-    id: string;
     user_id: string;
+    email: string;
+    username: string;
     display_name: string | null;
     role: string | null;
     is_admin: boolean;
@@ -253,7 +254,7 @@ export default function UsersManagement() {
                             {user.profile.display_name || "Unnamed User"}
                           </CardTitle>
                           <CardDescription className="font-mono text-xs mt-1">
-                            {user.profile.user_id}
+                            {user.profile.email}
                           </CardDescription>
                         </div>
                         <div className="flex gap-2">
