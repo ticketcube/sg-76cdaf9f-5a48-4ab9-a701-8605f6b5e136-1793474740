@@ -242,7 +242,7 @@ export const authService = {
   // Listen to auth state changes
   onAuthStateChange(callback: (event: string, session: Session | null) => void) {
     return supabase.auth.onAuthStateChange(callback);
-  }
+  },
 
   // Admin: Create user with role (requires service role key in API route)
   async adminCreateUser(email: string, password: string, displayName: string, role: "otwl-dj" | "otwl-podcast" | "otwl-staff", isAdmin: boolean = false): Promise<{ user: AuthUser | null; error: AuthError | null }> {
