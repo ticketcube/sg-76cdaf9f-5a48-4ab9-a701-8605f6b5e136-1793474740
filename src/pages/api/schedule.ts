@@ -6,6 +6,7 @@ interface AzuraCastPlaylist {
   schedule_items?: Array<{
     start_time: number;
     end_time: number;
+    days?: number[];
   }>;
 }
 
