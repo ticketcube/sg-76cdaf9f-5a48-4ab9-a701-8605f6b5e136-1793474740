@@ -5,7 +5,8 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Music, Calendar, Clock, ExternalLink, RefreshCw } from "lucide-react";
+import { Music, Calendar, Clock, ExternalLink, RefreshCw, Edit, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 
 interface AzuraCastPlaylist {
@@ -75,30 +76,30 @@ export default function PlaylistManagementPage() {
     <ProtectedRoute requireAdmin>
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
-          <div className="mb-8 flex items-start justify-between">
+          <div className="flex justify-between items-start mb-6">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Playlist Management</h1>
-              <p className="text-muted">View playlists configured in AzuraCast</p>
+              <h1 className="text-3xl font-bold mb-2">Playlists</h1>
+              <p className="text-muted-foreground">
+                View playlists configured in AzuraCast. Manage them in AzuraCast admin.
+              </p>
             </div>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={fetchPlaylists}
-                disabled={loading}
+              <Link href="/admin/playlist-editor">
+                <Button variant="outline">
+                  <Edit className="w-4 h-4 mr-2" />
+                  Schedule Editor
+                </Button>
+              </Link>
+              <a
+                href={`${process.env.NEXT_PUBLIC_AZURACAST_URL}/station/${process.env.NEXT_PUBLIC_STATION_SHORTCODE}/playlists`}
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
-              <Button asChild>
-                <a 
-                  href={`${azuracastUrl}/admin/station/1/playlists`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                >
+                <Button>
                   <ExternalLink className="w-4 h-4 mr-2" />
                   Manage in AzuraCast
-                </a>
-              </Button>
+                </Button>
+              </a>
             </div>
           </div>
 
