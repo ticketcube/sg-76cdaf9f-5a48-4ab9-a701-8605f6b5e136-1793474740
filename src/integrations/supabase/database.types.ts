@@ -2407,6 +2407,74 @@ export type Database = {
         }
         Relationships: []
       }
+      playlist_tracks: {
+        Row: {
+          artist_name: string
+          created_at: string
+          duration_seconds: number
+          id: string
+          order_position: number
+          playlist_id: string
+          spotify_url: string | null
+          track_title: string
+        }
+        Insert: {
+          artist_name: string
+          created_at?: string
+          duration_seconds: number
+          id?: string
+          order_position: number
+          playlist_id: string
+          spotify_url?: string | null
+          track_title: string
+        }
+        Update: {
+          artist_name?: string
+          created_at?: string
+          duration_seconds?: number
+          id?: string
+          order_position?: number
+          playlist_id?: string
+          spotify_url?: string | null
+          track_title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_tracks_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playlists: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       points_ledger: {
         Row: {
           amount: number
@@ -2685,6 +2753,44 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_slots: {
+        Row: {
+          block_name: string
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          playlist_id: string
+          start_time: string
+        }
+        Insert: {
+          block_name: string
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          playlist_id: string
+          start_time: string
+        }
+        Update: {
+          block_name?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          playlist_id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_slots_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
             referencedColumns: ["id"]
           },
         ]
