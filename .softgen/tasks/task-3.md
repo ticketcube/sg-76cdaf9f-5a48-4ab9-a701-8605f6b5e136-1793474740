@@ -7,7 +7,7 @@ tags: [fans, video, aimc]
 ---
 
 ## Notes
-Audio first, video when it earns it. Two cases: (1) Watch mode for recorded AIMC assets, where the track's AzuraCast custom field `has_video` is `"1"`; (2) a live venue show takeover later, via Mux or AWS IVS. Live venue shows air once and are never replayed unless the artist opts in. Depends on task 6.
+Audio first, video when it earns it. Two cases: (1) Watch mode for recorded AIMC assets, where the track's AzuraCast custom field `has_video` is `"1"`; (2) a live venue show takeover later, via Mux or AWS IVS. Live venue shows air once and are never replayed unless the artist opts in. Depends on task 6. Watch mode lives inside the player and now-playing embeds, because fans watch on onestowatch.com.
 
 ## Checklist
 - [ ] Server route `/api/video?asset={aimc_asset_id}` that calls AIMC with server-only `AIMC_API_URL` and `AIMC_API_KEY` and returns a short-lived MP4 proxy URL; stub the AIMC call behind one function with a TODO until the AIMC team confirms the route

@@ -2,6 +2,10 @@
 
 This is the short, OTW-specific version of the AzuraCast API docs (`/docs/developers/apis/` on any AzuraCast install). Check the full API reference at `{AZURACAST_URL}/docs/api/` if an endpoint here doesn't behave as described, because routes can shift between AzuraCast versions.
 
+## Where things live
+
+AzuraCast is at `https://radio.onestowatch.live` (`AZURACAST_URL`). This site is `onestowatch.live`, mostly a staff dashboard plus the `/embed/*` widgets. Fans listen on onestowatch.com through those embeds.
+
 ## The rule
 
 AzuraCast makes the sound. The site shows it. If a feature touches audio files, playlists, rotation, scheduling of what plays, or the live signal, it is done in AzuraCast's admin, not in the site. Fans never see an AzuraCast page.

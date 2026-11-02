@@ -10,7 +10,7 @@ position: 6
 ---
 
 ## Notes
-Task 1 is marked done, but the wiring is broken. `AudioPlayer.tsx` sets `nowPlayingUrl` to the MP3 stream instead of the now-playing API, both URLs are hardcoded, `embed/player.tsx` hardcodes its own URL, and `/api/schedule` reads `config/schedule.json` at the repo root, which does not exist (the file is `otw-radio/config/schedule.json`). Fans must never see the AzuraCast UI, only the stream and data through this site.
+Task 1 is marked done, but the wiring is broken. `AudioPlayer.tsx` sets `nowPlayingUrl` to the MP3 stream instead of the now-playing API, both URLs are hardcoded, `embed/player.tsx` hardcodes its own URL, and `/api/schedule` reads `config/schedule.json` at the repo root, which does not exist (the file is `otw-radio/config/schedule.json`). AzuraCast lives at `https://radio.onestowatch.live`; this site is `onestowatch.live`. The player currently points at `onestowatch.live/listen/...`, which is wrong. Fans must never see the AzuraCast UI.
 
 ## Checklist
 - [ ] Add a server route `/api/nowplaying` that fetches `{AZURACAST_URL}/api/nowplaying/{AZURACAST_STATION_ID}` server-side, caches it for 10 seconds, and returns only the fields the site uses

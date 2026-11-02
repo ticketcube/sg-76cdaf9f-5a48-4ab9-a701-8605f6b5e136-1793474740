@@ -20,7 +20,7 @@ Build **OTW Radio**, the web player and schedule for a 24/7 internet radio stati
 
 ## Who does what
 
-AzuraCast makes the sound: tracks, playlists, rotation, the 10am and 3pm feature schedule, host streaming accounts and live takeover, and play logs for royalties. This site is everything people see: player, schedule, feature, host and artist pages, watch mode and embeds. Fans never see the AzuraCast UI, and no AzuraCast credentials go in the site. See `docs/SOFTGEN_TASKS.md` for the task list.
+AzuraCast makes the sound: tracks, playlists, rotation, the 10am and 3pm feature schedule, host streaming accounts and live takeover, and play logs for royalties. This site is everything people see: player, schedule, feature, host and artist pages, watch mode and embeds. Fans never see the AzuraCast UI, and no AzuraCast credentials go in the site. Domains: AzuraCast at radio.onestowatch.live; this site at onestowatch.live as a password-protected staff dashboard plus public `/embed/*` widgets; fans listen on onestowatch.com through the embeds. See `docs/SOFTGEN_TASKS.md` for the task list.
 
 ## Pages
 

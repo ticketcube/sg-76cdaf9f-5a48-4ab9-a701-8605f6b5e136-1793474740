@@ -1,5 +1,5 @@
 ---
-title: "Fans: Artist pages with ticket links"
+title: "Fans: Artist ticket links in the embeds"
 status: todo
 priority: medium
 type: feature
@@ -14,7 +14,7 @@ Ticket clicks are the measurable commerce line for onestowatch.live, so every ar
 
 ## Checklist
 - [ ] Add `otw-radio/config/artists.json`: slug, name, Spotify ID (matches the AIMC `Artist Spotify ID` tag), photo, short bio, ticket URL
-- [ ] Page `/artists/[slug]` with bio, photo, recent plays on OTW Radio (from `song_history` where available), features they appeared in, and a "Get tickets" button
+- [ ] Show the "Get tickets" button in the player and now-playing embeds; staff page `/artists/[slug]` with bio, photo, recent plays on OTW Radio (from `song_history` where available), features they appeared in, and a "Get tickets" button
 - [ ] Match the now-playing artist to `artists.json` by name and link the card to the artist page
 - [ ] Add UTM parameters (`utm_source=otwradio&utm_medium=player`) to ticket links
 

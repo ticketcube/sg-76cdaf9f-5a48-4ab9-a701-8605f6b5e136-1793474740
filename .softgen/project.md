@@ -26,5 +26,10 @@ Style: Premium, live-event, music-forward.
 - Programming schedule grid showing the 5 standard daily blocks and rotating weekly features
 - Dynamic video player takeover component for artist-opt-in simulcasts
 
+## Domains
+- radio.onestowatch.live: AzuraCast (stream, API, admin). Never shown to fans.
+- onestowatch.live: this site. A password-protected staff dashboard plus public `/embed/*` widgets.
+- onestowatch.com: where fans listen, through the embeds.
+
 ## AzuraCast rules
 Before any task that touches the stream, now playing, schedule data, hosts or AzuraCast, read `otw-radio/docs/AZURACAST_FOR_SOFTGEN.md`. It lists which AzuraCast endpoints the site may call, which must stay server-side, and what the site must never build (next song titles, on-demand playback, song requests, media uploads, DJ passwords).
