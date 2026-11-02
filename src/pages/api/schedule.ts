@@ -11,7 +11,7 @@ export default async function handler(
   }
 
   try {
-    const schedulePath = path.join(process.cwd(), "config", "schedule.json");
+    const schedulePath = path.join(process.cwd(), "otw-radio", "config", "schedule.json");
     const scheduleData = await fs.readFile(schedulePath, "utf-8");
     const schedule = JSON.parse(scheduleData);
     

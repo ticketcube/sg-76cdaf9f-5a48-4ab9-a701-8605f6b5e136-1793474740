@@ -1,110 +1,43 @@
-export default function HomePage() {
+import { AudioPlayer } from "@/components/AudioPlayer";
+import { Schedule } from "@/components/Schedule";
+
+export default function Home() {
   return (
     <div className="page-container">
-      <div className="max-w-5xl mx-auto section-spacing">
-        {/* Hero Section */}
-        <section className="text-center space-y-6 py-8 bg-gradient-hero rounded-2xl">
-          <h1 className="page-title">
+      <div className="max-w-7xl mx-auto section-spacing">
+        <section className="text-center space-y-6 mb-16">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
             OTW Radio
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            The 24/7 home for Ones To Watch artists. Live premieres, exclusive interviews, and curated programming around the clock.
+          <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
+            24/7 music from the OnesToWatch roster. Live artist premieres, curated features, and the soundtrack of what's next.
           </p>
         </section>
 
-        {/* Currently Playing */}
-        <section className="feature-card">
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-4">
-              <h2 className="section-title">Currently Playing</h2>
-              <span className="live-indicator bg-primary text-primary-foreground px-3 py-1 rounded">
-                LIVE
-              </span>
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <span className="time-badge-live">05:00 PM - 12:00 AM</span>
-                <span className="font-medium text-lg">OTW Playlist</span>
-              </div>
-              <p className="text-muted-foreground">
-                Non-stop music from the Ones To Watch roster, featuring new releases, deep cuts, and artist favorites.
-              </p>
-            </div>
+        <div className="grid lg:grid-cols-2 gap-8 mb-16">
+          <div>
+            <AudioPlayer />
           </div>
-        </section>
+          <div>
+            <Schedule />
+          </div>
+        </div>
 
-        {/* Stats Grid */}
-        <section className="stats-grid">
-          <div className="stat-item">
-            <div className="stat-value">24/7</div>
-            <div className="stat-label">Live Stream</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value">100+</div>
-            <div className="stat-label">Artists</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value">5</div>
-            <div className="stat-label">Daily Blocks</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value">∞</div>
-            <div className="stat-label">Good Vibes</div>
-          </div>
-        </section>
-
-        {/* Schedule Grid */}
-        <section className="space-y-6">
-          <h2 className="section-title">Coming Up</h2>
-          <div className="schedule-grid">
-            <div className="schedule-item">
-              <span className="time-badge">12:00 AM</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold">OTW Playlist</p>
-                <p className="text-sm text-muted-foreground">Overnight Mix</p>
-              </div>
+        <section className="feature-card text-center">
+          <h2 className="section-title mb-4">Always On, Always Fresh</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
+            OTW Radio runs 24/7 with a rotating schedule of curated playlists, weekly features, and guest curator sets. 
+            When artists choose to simulcast their live performances or premieres, the station automatically switches to video mode.
+          </p>
+          <div className="flex flex-wrap gap-4 justify-center">
+            <div className="px-6 py-3 bg-accent/20 rounded-full">
+              <p className="text-sm font-mono text-primary">24/7 BROADCAST</p>
             </div>
-            
-            <div className="schedule-item">
-              <span className="time-badge">05:00 AM</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold">OTW Playlist</p>
-                <p className="text-sm text-muted-foreground">Morning Drive</p>
-              </div>
+            <div className="px-6 py-3 bg-accent/20 rounded-full">
+              <p className="text-sm font-mono text-primary">LIVE PREMIERES</p>
             </div>
-            
-            <div className="schedule-item">
-              <span className="time-badge">10:00 AM</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold status-live">Artist Interview</p>
-                <p className="text-sm text-muted-foreground">This Friday</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Featured Content */}
-        <section className="space-y-6">
-          <h2 className="section-title">This Week&apos;s Features</h2>
-          <div className="artist-grid">
-            <div className="artist-card">
-              <div className="video-container mb-4">
-                <div className="video-overlay">
-                  <p className="text-sm font-semibold">Live Premiere</p>
-                </div>
-              </div>
-              <h3 className="font-semibold mb-1">Artist Interview</h3>
-              <p className="text-sm text-muted-foreground">Friday, 10:00 AM - 12:00 PM</p>
-            </div>
-            
-            <div className="artist-card">
-              <div className="video-container mb-4 bg-accent/50">
-                <div className="video-overlay">
-                  <p className="text-sm font-semibold">Special Mix</p>
-                </div>
-              </div>
-              <h3 className="font-semibold mb-1">Curated Playlist</h3>
-              <p className="text-sm text-muted-foreground">Saturday, 2:00 PM - 5:00 PM</p>
+            <div className="px-6 py-3 bg-accent/20 rounded-full">
+              <p className="text-sm font-mono text-primary">GUEST CURATORS</p>
             </div>
           </div>
         </section>
