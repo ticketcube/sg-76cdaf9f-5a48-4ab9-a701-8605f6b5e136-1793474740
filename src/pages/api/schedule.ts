@@ -95,6 +95,9 @@ export default async function handler(
     const playlists = await fetchAzuraCastPlaylists();
     const nowPlayingPlaylist = await fetchNowPlaying();
 
+    console.log("AzuraCast playlists:", JSON.stringify(playlists, null, 2));
+    console.log("Now playing playlist:", nowPlayingPlaylist);
+
     // Static daily schedule structure
     const dailySchedule = [
       { start: "0000", end: "1000", block: "overnight" },
@@ -110,21 +113,33 @@ export default async function handler(
     const daily = dailySchedule.map((slot, index) => {
       // Find playlist that matches this time slot
       const matchingPlaylist = playlists.find(p => {
+        console.log(`Checking playlist "${p.name}" for slot ${slot.start}-${slot.end}`);
+        console.log(`  Schedule items:`, p.schedule_items);
+        
         if (!p.schedule_items || p.schedule_items.length === 0) {
           // OTW Playlist has no schedule (plays when nothing else is scheduled)
-          return slot.block === "overnight";
+          const matches = slot.block === "overnight";
+          console.log(`  No schedule items, matches overnight: ${matches}`);
+          return matches;
         }
         
         // Check if any schedule item overlaps with this slot
-        return p.schedule_items.some(item => {
+        const matches = p.schedule_items.some(item => {
           const itemStart = item.start_time;
           const itemEnd = item.end_time;
           const slotStart = parseInt(slot.start);
           const slotEnd = parseInt(slot.end);
           
-          return itemStart === slotStart && itemEnd === slotEnd;
+          console.log(`  Comparing: item ${itemStart}-${itemEnd} vs slot ${slotStart}-${slotEnd}`);
+          const match = itemStart === slotStart && itemEnd === slotEnd;
+          console.log(`  Match: ${match}`);
+          return match;
         });
+        
+        return matches;
       });
+
+      console.log(`Slot ${slot.start}-${slot.end}: matched playlist "${matchingPlaylist?.name || 'none'}"`);
 
       return {
         ...slot,
