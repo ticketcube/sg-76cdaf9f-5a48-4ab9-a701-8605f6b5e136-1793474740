@@ -34,16 +34,15 @@ interface ScheduleData {
     };
   };
   debug?: {
-    azuracast_playlists_count: number;
-    azuracast_playlists: Array<{
-      id: number;
+    azuracast_schedule_count: number;
+    azuracast_schedule: Array<{
       name: string;
-      schedule_items_count: number;
-      schedule_items: Array<{
-        start_time: number;
-        end_time: number;
-        days?: number[];
-      }>;
+      start: string;
+      end: string;
+      type: string;
+      is_now: boolean;
+      start_parsed: number;
+      end_parsed: number;
     }>;
   };
 }
@@ -165,24 +164,21 @@ export function Schedule() {
             onClick={() => setShowDebug(!showDebug)}
             className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
           >
-            {showDebug ? "▼" : "▶"} Debug: {schedule.debug.azuracast_playlists_count} playlists from AzuraCast
+            {showDebug ? "▼" : "▶"} Debug: {schedule.debug.azuracast_schedule_count} schedule items from AzuraCast
           </button>
           {showDebug && (
             <div className="mt-3 space-y-2 text-xs font-mono">
-              {schedule.debug.azuracast_playlists.map((p) => (
-                <div key={p.id} className="bg-background p-2 rounded border border-border">
-                  <div className="font-semibold">#{p.id}: {p.name}</div>
-                  <div className="text-muted-foreground">Schedule items: {p.schedule_items_count}</div>
-                  {p.schedule_items && p.schedule_items.length > 0 && (
-                    <div className="mt-1 pl-2 space-y-1">
-                      {p.schedule_items.map((item, i) => (
-                        <div key={i} className="text-muted-foreground text-[10px]">
-                          {item.start_time} - {item.end_time}
-                          {item.days && item.days.length > 0 && ` (days: ${item.days.join(',')})`}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+              {schedule.debug.azuracast_schedule.map((item, i) => (
+                <div key={i} className="bg-background p-2 rounded border border-border">
+                  <div className="font-semibold">
+                    {item.name} {item.is_now && "🔴"}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {item.start} - {item.end} ({item.type})
+                  </div>
+                  <div className="text-muted-foreground text-[10px]">
+                    Parsed: {item.start_parsed} - {item.end_parsed}
+                  </div>
                 </div>
               ))}
               <div className="mt-4 bg-background p-2 rounded border border-border">
