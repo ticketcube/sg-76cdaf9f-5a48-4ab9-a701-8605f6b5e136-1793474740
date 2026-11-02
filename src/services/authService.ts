@@ -8,6 +8,16 @@ export interface AuthUser {
   created_at?: string;
 }
 
+export interface UserProfile {
+  id: string;
+  user_id: string;
+  display_name: string | null;
+  role: "otwl-dj" | "otwl-podcast" | "otwl-staff" | null;
+  is_admin: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AuthError {
   message: string;
   code?: string;
@@ -45,6 +55,50 @@ export const authService = {
     } : null;
   },
 
+  // Get user profile with role
+  async getUserProfile(userId: string): Promise<UserProfile | null> {
+    const { data, error } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return data as UserProfile;
+  },
+
+  // Get current user with profile
+  async getCurrentUserWithProfile(): Promise<{ user: AuthUser; profile: UserProfile } | null> {
+    const user = await this.getCurrentUser();
+    if (!user) return null;
+
+    const profile = await this.getUserProfile(user.id);
+    if (!profile) return null;
+
+    return { user, profile };
+  },
+
+  // Check if user has specific role
+  async hasRole(userId: string, role: string): Promise<boolean> {
+    const profile = await this.getUserProfile(userId);
+    return profile?.role === role;
+  },
+
+  // Check if user is admin
+  async isAdmin(userId: string): Promise<boolean> {
+    const profile = await this.getUserProfile(userId);
+    return profile?.is_admin === true;
+  },
+
+  // Check if user is staff (any OTW role)
+  async isStaff(userId: string): Promise<boolean> {
+    const profile = await this.getUserProfile(userId);
+    return profile?.role !== null;
+  },
+
   // Get current session
   async getCurrentSession(): Promise<Session | null> {
     const { data: { session } } = await supabase.auth.getSession();
@@ -52,13 +106,14 @@ export const authService = {
   },
 
   // Sign up with email and password
-  async signUp(email: string, password: string): Promise<{ user: AuthUser | null; error: AuthError | null }> {
+  async signUp(email: string, password: string, metadata?: { display_name?: string; role?: string }): Promise<{ user: AuthUser | null; error: AuthError | null }> {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${getURL()}auth/confirm-email`
+          emailRedirectTo: `${getURL()}auth/confirm-email`,
+          data: metadata
         }
       });
 
@@ -72,6 +127,16 @@ export const authService = {
         user_metadata: data.user.user_metadata,
         created_at: data.user.created_at
       } : null;
+
+      // Create profile if user was created
+      if (authUser && data.user) {
+        await supabase.from("user_profiles").insert({
+          user_id: data.user.id,
+          display_name: metadata?.display_name || null,
+          role: metadata?.role || null,
+          is_admin: false
+        });
+      }
 
       return { user: authUser, error: null };
     } catch (error) {
