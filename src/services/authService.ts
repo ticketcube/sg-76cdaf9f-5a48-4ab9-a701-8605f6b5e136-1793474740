@@ -243,4 +243,79 @@ export const authService = {
   onAuthStateChange(callback: (event: string, session: Session | null) => void) {
     return supabase.auth.onAuthStateChange(callback);
   }
+
+  // Admin: Create user with role (requires service role key in API route)
+  async adminCreateUser(email: string, password: string, displayName: string, role: "otwl-dj" | "otwl-podcast" | "otwl-staff", isAdmin: boolean = false): Promise<{ user: AuthUser | null; error: AuthError | null }> {
+    try {
+      // This will be called from an API route with service role key
+      const response = await fetch("/api/admin/create-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, displayName, role, isAdmin })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { user: null, error: { message: data.error || "Failed to create user" } };
+      }
+
+      return { user: data.user, error: null };
+    } catch (error) {
+      return { 
+        user: null, 
+        error: { message: "An unexpected error occurred while creating user" } 
+      };
+    }
+  },
+
+  // Admin: Get all users with profiles
+  async adminGetAllUsers(): Promise<{ users: Array<{ user: AuthUser; profile: UserProfile }>; error: AuthError | null }> {
+    try {
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        return { users: [], error: { message: error.message } };
+      }
+
+      const users = data.map(profile => ({
+        user: {
+          id: profile.user_id,
+          email: "", // Will be populated from auth.users if needed
+          created_at: profile.created_at
+        },
+        profile: profile as UserProfile
+      }));
+
+      return { users, error: null };
+    } catch (error) {
+      return { 
+        users: [], 
+        error: { message: "An unexpected error occurred while fetching users" } 
+      };
+    }
+  },
+
+  // Admin: Update user profile
+  async adminUpdateUserProfile(userId: string, updates: { display_name?: string; role?: string; is_admin?: boolean }): Promise<{ error: AuthError | null }> {
+    try {
+      const { error } = await supabase
+        .from("user_profiles")
+        .update(updates)
+        .eq("user_id", userId);
+
+      if (error) {
+        return { error: { message: error.message } };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { 
+        error: { message: "An unexpected error occurred while updating user profile" } 
+      };
+    }
+  }
 };
