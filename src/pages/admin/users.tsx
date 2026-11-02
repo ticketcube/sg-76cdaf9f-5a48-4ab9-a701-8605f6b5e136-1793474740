@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { authService } from "@/services/authService";
+import { authService, type AuthUser, type UserProfile } from "@/services/authService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,21 +16,8 @@ import { Loader2, UserPlus, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 interface User {
-  user: {
-    id: string;
-    email: string;
-    created_at: string;
-  };
-  profile: {
-    user_id: string;
-    email: string;
-    username: string;
-    display_name: string | null;
-    role: string | null;
-    is_admin: boolean;
-    created_at: string;
-    updated_at: string;
-  };
+  user: AuthUser;
+  profile: UserProfile;
 }
 
 export default function UsersManagement() {
@@ -246,7 +233,7 @@ export default function UsersManagement() {
                 </Card>
               ) : (
                 users.map((user) => (
-                  <Card key={user.profile.id}>
+                  <Card key={user.profile.user_id}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">

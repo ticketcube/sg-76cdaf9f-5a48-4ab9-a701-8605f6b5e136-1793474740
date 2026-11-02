@@ -68,7 +68,11 @@ export const authService = {
       return null;
     }
 
-    return data;
+    // Cast role to our expected type
+    return {
+      ...data,
+      role: data.role as "otwl-dj" | "otwl-podcast" | "otwl-staff" | null
+    };
   },
 
   // Get current user with profile
@@ -287,8 +291,11 @@ export const authService = {
           id: profile.user_id,
           email: profile.email,
           created_at: profile.created_at
-        },
-        profile: profile
+        } as AuthUser,
+        profile: {
+          ...profile,
+          role: profile.role as "otwl-dj" | "otwl-podcast" | "otwl-staff" | null
+        } as UserProfile
       }));
 
       return { users, error: null };
