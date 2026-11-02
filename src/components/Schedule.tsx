@@ -1,307 +1,203 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  STATION_TZ,
+  UnifiedScheduleDay,
+  UnifiedScheduleItem,
+  UnifiedScheduleResponse,
+  formatDay,
+  formatTime,
+} from "@/lib/schedule";
 
-interface ScheduleBlock {
-  start: string;
-  end: string;
-  block: string;
-  airing?: string;
-  playlist_id?: string | null;
-  playlist_name?: string | null;
-  playlist_description?: string | null;
+// Unified OTW Radio schedule: AzuraCast playlists, streamer (DJ/host) slots and
+// unscheduled live takeovers on one timeline per day, in station time (ET).
+// Data comes from /api/schedule, which talks to AzuraCast server-side.
+
+const REFRESH_MS = 5 * 60 * 1000; // re-fetch the schedule
+const TICK_MS = 30 * 1000; // move the "on now" marker
+
+const TYPE_LABEL: Record<UnifiedScheduleItem["type"], string> = {
+  playlist: "PLAYLIST",
+  streamer: "LIVE SHOW",
+  live: "LIVE",
+  rotation: "ROTATION",
+};
+
+interface ScheduleProps {
+  /** Compact layout for /embed/schedule on onestowatch.com. */
+  embed?: boolean;
 }
 
-interface ScheduleData {
-  station: {
-    name: string;
-    timezone: string;
-  };
-  daily: ScheduleBlock[];
-  blocks: {
-    [key: string]: {
-      title: string;
-      description: string;
-    };
-  };
-  features: {
-    [key: string]: {
-      title: string;
-      description: string;
-      proposed?: boolean;
-    };
-  };
-  debug?: {
-    azuracast_schedule_count: number;
-    azuracast_schedule: Array<{
-      name: string;
-      start: string;
-      end: string;
-      type: string;
-      is_now: boolean;
-      start_parsed: number;
-      end_parsed: number;
-    }>;
-  };
-}
+export function Schedule({ embed = false }: ScheduleProps) {
+  const [data, setData] = useState<UnifiedScheduleResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState<number | null>(null); // null until mounted: avoids SSR mismatch
+  const [day, setDay] = useState<string>("");
 
-interface WeeklyFeature {
-  day: string;
-  title: string;
-  description: string;
-}
-
-const weeklyFeatures: WeeklyFeature[] = [
-  {
-    day: "Monday",
-    title: "OTW Weekly Recap",
-    description: "The week in OTW: news, releases and clips."
-  },
-  {
-    day: "Tuesday",
-    title: "Chef's Choice",
-    description: "Curator picks from the OTW editorial team."
-  },
-  {
-    day: "Wednesday",
-    title: "OTW Touring Artists",
-    description: "Artists on the road this week, with their tour dates."
-  },
-  {
-    day: "Thursday",
-    title: "GWLMMWLG",
-    description: "Girls Who Like Making Music With Like Girls - celebrating female and non-binary artists."
-  },
-  {
-    day: "Friday",
-    title: "Artist Interview",
-    description: "One long-form artist interview."
-  }
-];
-
-function getCurrentBlock(schedule: ScheduleBlock[]): number {
-  const now = new Date();
-  const et = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
-  const currentTime = et.getHours() * 100 + et.getMinutes();
-
-  for (let i = 0; i < schedule.length; i++) {
-    const start = parseInt(schedule[i].start);
-    const end = parseInt(schedule[i].end);
-    if (currentTime >= start && currentTime < end) {
-      return i;
+  const load = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const res = await fetch("/api/schedule", { signal });
+      if (!res.ok) throw new Error(`Schedule request failed (${res.status})`);
+      const json: UnifiedScheduleResponse = await res.json();
+      setData(json);
+      setError(null);
+      setDay((current) => (current && json.days.some((d) => d.date === current) ? current : json.days[0]?.date ?? ""));
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+      console.warn("Failed to load schedule:", err);
+      setError("Schedule is unavailable right now.");
     }
-  }
-  return -1;
-}
-
-function formatTime(time: string): string {
-  const hour = parseInt(time.substring(0, 2));
-  const minute = time.substring(2);
-  const period = hour >= 12 ? "PM" : "AM";
-  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-  return `${displayHour}:${minute} ${period}`;
-}
-
-export function Schedule() {
-  const [schedule, setSchedule] = useState<ScheduleData | null>(null);
-  const [currentBlock, setCurrentBlock] = useState(-1);
-  const [mounted, setMounted] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
   }, []);
 
+  // Fetch once on mount, then every few minutes. No dependency on `data`, so a
+  // new response never restarts the effect (the old bug: an endless fetch loop).
   useEffect(() => {
-    if (!mounted) return;
-
-    const fetchSchedule = async () => {
-      try {
-        const response = await fetch("/api/schedule");
-        if (!response.ok) return;
-        const data = await response.json();
-        setSchedule(data);
-        setCurrentBlock(getCurrentBlock(data.daily));
-      } catch (error) {
-        console.warn("Failed to load schedule:", error);
-      }
+    const controller = new AbortController();
+    load(controller.signal);
+    const refresh = setInterval(() => load(), REFRESH_MS);
+    return () => {
+      controller.abort();
+      clearInterval(refresh);
     };
+  }, [load]);
 
-    fetchSchedule();
-    const interval = setInterval(() => {
-      if (schedule) {
-        setCurrentBlock(getCurrentBlock(schedule.daily));
-      }
-    }, 60000);
+  useEffect(() => {
+    setNow(Date.now());
+    const tick = setInterval(() => setNow(Date.now()), TICK_MS);
+    return () => clearInterval(tick);
+  }, []);
 
-    return () => clearInterval(interval);
-  }, [mounted, schedule]);
+  if (error && !data) {
+    return (
+      <div className="bg-card rounded-2xl p-6 text-center space-y-3">
+        <p className="text-muted-foreground">{error}</p>
+        <button onClick={() => load()} className="text-sm font-mono text-primary hover:underline">
+          Try again
+        </button>
+      </div>
+    );
+  }
 
-  if (!mounted || !schedule) {
+  if (!data || now === null) {
     return (
       <div className="bg-card rounded-2xl p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/3" />
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 bg-muted rounded" />
-            ))}
-          </div>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 bg-muted rounded" />
+          ))}
         </div>
       </div>
     );
   }
 
-  const today = new Date().toLocaleDateString("en-US", { weekday: "long", timeZone: "America/New_York" });
+  const tz = data.station.timezone || STATION_TZ;
 
   return (
     <div className="bg-card rounded-2xl overflow-hidden">
-      {schedule?.debug && (
-        <div className="border-b border-border p-4 bg-muted/50">
-          <button
-            onClick={() => setShowDebug(!showDebug)}
-            className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {showDebug ? "▼" : "▶"} Debug: {schedule.debug.azuracast_schedule_count} schedule items from AzuraCast
-          </button>
-          {showDebug && (
-            <div className="mt-3 space-y-2 text-xs font-mono">
-              {schedule.debug.azuracast_schedule.map((item, i) => (
-                <div key={i} className="bg-background p-2 rounded border border-border">
-                  <div className="font-semibold">
-                    {item.name} {item.is_now && "🔴"}
-                  </div>
-                  <div className="text-muted-foreground">
-                    {item.start} - {item.end} ({item.type})
-                  </div>
-                  <div className="text-muted-foreground text-[10px]">
-                    Parsed: {item.start_parsed} - {item.end_parsed}
-                  </div>
-                </div>
-              ))}
-              <div className="mt-4 bg-background p-2 rounded border border-border">
-                <div className="font-semibold mb-2">Matched slots:</div>
-                {schedule.daily.map((slot, i) => (
-                  <div key={i} className="text-muted-foreground">
-                    {slot.start}-{slot.end}: {slot.playlist_name || "❌ No match"}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+      {data.live.isLive && (
+        <div className="flex items-center gap-2 px-6 py-3 bg-primary/10 border-b border-primary/30">
+          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+          <span className="font-mono text-sm">
+            ON AIR NOW{data.live.streamerName ? `: ${data.live.streamerName}` : ""}
+          </span>
         </div>
       )}
-      
-      <Tabs defaultValue="today" className="w-full">
-        <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-14 px-6">
-          <TabsTrigger value="today" className="font-semibold data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
-            Today
-          </TabsTrigger>
-          <TabsTrigger value="week" className="font-semibold data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
-            This Week
-          </TabsTrigger>
+
+      <Tabs value={day} onValueChange={setDay} className="w-full">
+        <TabsList className="w-full justify-start overflow-x-auto rounded-none border-b bg-transparent h-14 px-4 gap-1">
+          {data.days.map((d, i) => (
+            <TabsTrigger
+              key={d.date}
+              value={d.date}
+              className="font-semibold shrink-0 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+            >
+              {i === 0 ? "Today" : formatDay(d.date, "short")}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        <TabsContent value="today" className="p-6 space-y-3 m-0">
-          {schedule.daily.map((item, index) => {
-            const blockInfo = schedule.blocks[item.block];
-            const isActive = currentBlock === index;
-            const isFeature = item.block === "weekly_feature" || item.block === "guest_curator";
-
-            return (
-              <div
-                key={index}
-                className={`flex items-start gap-4 p-4 rounded-lg border transition-colors ${
-                  isActive ? "bg-accent/50 border-primary" : "border-border hover:bg-accent/20"
-                }`}
-              >
-                <div className={`shrink-0 text-sm font-mono px-3 py-1 rounded-full ${
-                  isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                }`}>
-                  {formatTime(item.start)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-semibold">{blockInfo?.title || item.block}</p>
-                    {isActive && (
-                      <Badge className="bg-primary text-primary-foreground font-mono text-xs">
-                        LIVE
-                      </Badge>
-                    )}
-                    {isFeature && (
-                      <Badge variant="outline" className="font-mono text-xs">
-                        FEATURE
-                      </Badge>
-                    )}
-                    {item.airing === "repeat" && (
-                      <Badge variant="outline" className="font-mono text-xs">
-                        ENCORE
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {blockInfo?.description || ""}
-                  </p>
-                  {item.playlist_name && (
-                    <div className="mt-2 pt-2 border-t border-border/50">
-                      <p className="text-sm font-medium text-foreground">
-                        Playing: {item.playlist_name}
-                      </p>
-                      {item.playlist_description && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {item.playlist_description}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </TabsContent>
-
-        <TabsContent value="week" className="p-6 space-y-3 m-0">
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
-              Weekly Features (10:00 AM - 12:00 PM ET)
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Each weekday features a different curated program, premiered at 10am and repeated at 3pm.
-            </p>
-          </div>
-          {weeklyFeatures.map((feature) => {
-            const isToday = feature.day === today;
-
-            return (
-              <div
-                key={feature.day}
-                className={`flex items-start gap-4 p-4 rounded-lg border transition-colors ${
-                  isToday ? "bg-accent/50 border-primary" : "border-border hover:bg-accent/20"
-                }`}
-              >
-                <div className={`shrink-0 text-sm font-mono px-3 py-1 rounded-full min-w-[80px] text-center ${
-                  isToday ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                }`}>
-                  {feature.day}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-semibold">{feature.title}</p>
-                    {isToday && (
-                      <Badge className="bg-primary text-primary-foreground font-mono text-xs">
-                        TODAY
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">{feature.description}</p>
-                </div>
-              </div>
-            );
-          })}
-        </TabsContent>
+        {data.days.map((d) => (
+          <TabsContent key={d.date} value={d.date} className={`${embed ? "p-4" : "p-6"} space-y-3 m-0`}>
+            <DayHeader day={d} tz={tz} />
+            {d.items.map((item) => (
+              <ScheduleRow key={item.key} item={item} now={now} tz={tz} compact={embed} />
+            ))}
+          </TabsContent>
+        ))}
       </Tabs>
+
+      {!data.azuracastOk && (
+        <p className="px-6 pb-4 text-xs font-mono text-muted-foreground">
+          Could not reach the station schedule. Showing the default rotation.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function DayHeader({ day, tz }: { day: UnifiedScheduleDay; tz: string }) {
+  const shows = day.items.filter((i) => i.type === "streamer" || i.type === "live").length;
+  const playlists = day.items.filter((i) => i.type === "playlist").length;
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-2 pb-1">
+      <h3 className="font-semibold">{formatDay(day.date, "long")}</h3>
+      <p className="text-xs font-mono text-muted-foreground">
+        {playlists} scheduled playlist{playlists === 1 ? "" : "s"} · {shows} live show{shows === 1 ? "" : "s"} ·{" "}
+        {tz === STATION_TZ ? "ET" : tz}
+      </p>
+    </div>
+  );
+}
+
+function ScheduleRow({
+  item,
+  now,
+  tz,
+  compact,
+}: {
+  item: UnifiedScheduleItem;
+  now: number;
+  tz: string;
+  compact: boolean;
+}) {
+  const isNow = item.start <= now && now < item.end;
+  const isPast = item.end <= now;
+  const isLiveType = item.type === "streamer" || item.type === "live";
+
+  return (
+    <div
+      className={`flex items-start gap-4 ${compact ? "p-3" : "p-4"} rounded-lg border transition-colors ${
+        isNow ? "bg-accent/50 border-primary" : "border-border hover:bg-accent/20"
+      } ${isPast ? "opacity-50" : ""}`}
+    >
+      <div
+        className={`shrink-0 text-sm font-mono px-3 py-1 rounded-full text-center min-w-[96px] ${
+          isNow ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+        }`}
+      >
+        {formatTime(item.start, tz)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-wrap items-center gap-2 mb-1">
+          <p className="font-semibold truncate">{item.title}</p>
+          {isNow && <Badge className="bg-primary text-primary-foreground font-mono text-xs">ON NOW</Badge>}
+          <Badge
+            variant="outline"
+            className={`font-mono text-xs ${isLiveType ? "border-primary text-primary" : "text-muted-foreground"}`}
+          >
+            {TYPE_LABEL[item.type]}
+          </Badge>
+        </div>
+        <p className="text-xs font-mono text-muted-foreground">
+          {item.continuesFromPreviousDay ? "Continues · " : ""}
+          {formatTime(item.start, tz)} to {formatTime(item.end, tz)}
+        </p>
+        {item.description && !compact && <p className="text-sm text-muted-foreground mt-1">{item.description}</p>}
+      </div>
     </div>
   );
 }

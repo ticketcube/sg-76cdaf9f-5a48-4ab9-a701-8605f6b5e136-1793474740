@@ -1,283 +1,210 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import grid from "../../../otw-radio/config/schedule.json";
+import {
+  STATION_TZ,
+  UnifiedScheduleDay,
+  UnifiedScheduleItem,
+  UnifiedScheduleResponse,
+  nextDateKey,
+  zonedDateKey,
+  zonedMidnight,
+} from "@/lib/schedule";
 
-interface AzuraCastScheduleItem {
-  start_timestamp: number;
-  start: string;
+// Unified OTW Radio schedule: every scheduled playlist AND every scheduled
+// streamer (DJ/host) slot from AzuraCast, one list per day in station time.
+// Gaps are filled with the default rotation (OTW Playlist), so each day reads
+// as a full 24 hours. Only playlist and show names leave this route: never
+// song titles, so the site never publishes an advance song list.
+//
+// Server-only env: AZURACAST_URL, AZURACAST_STATION_ID (id or shortcode).
+
+const AZURACAST_URL = (process.env.AZURACAST_URL || "https://radio.onestowatch.live").replace(/\/+$/, "");
+const STATION = process.env.AZURACAST_STATION_ID || process.env.NEXT_PUBLIC_STATION_SHORTCODE || "otw_radio";
+const DAYS_AHEAD = 7;
+
+// Shape of GET /api/station/{station}/schedule rows (public endpoint).
+interface AzuraScheduleRow {
+  id: number;
+  type: "playlist" | "streamer" | string;
+  name: string;
+  title?: string;
+  description?: string | null;
+  start_timestamp: number; // unix seconds
   end_timestamp: number;
+  start: string; // ISO 8601
   end: string;
   is_now: boolean;
-  name: string;
-  type: string;
-  playlist_id?: number;
-  description?: string;
 }
 
-interface AzuraCastPlaylist {
-  id: number;
-  name: string;
-  short_name: string;
-  type: string;
-  source: string;
-  weight: number;
-  is_enabled: boolean;
-  schedule_items: Array<{
-    id: number;
-    start_time: number;
-    end_time: number;
-    start_date: string | null;
-    end_date: string | null;
-    days: number[];
-  }>;
-}
+const rotation = grid.blocks.otw_playlist;
 
-interface NowPlayingResponse {
-  now_playing?: {
-    playlist?: string;
-  };
-}
-
-async function fetchAzuraCastSchedule(): Promise<AzuraCastScheduleItem[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_AZURACAST_URL || "https://onestowatch.live";
-  const stationId = process.env.AZURACAST_STATION_ID || "2";
-
+async function fetchJson<T>(url: string): Promise<T | null> {
   try {
-    console.log(`📡 Fetching schedule from: ${baseUrl}/api/station/${stationId}/schedule`);
-    const response = await fetch(`${baseUrl}/api/station/${stationId}/schedule`, {
-      headers: {
-        "Accept": "application/json"
-      }
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error(`❌ AzuraCast API error: ${response.status}`, text);
-      return [];
+    const res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+    if (!res.ok) {
+      console.error(`AzuraCast ${res.status} for ${url}`);
+      return null;
     }
-
-    const scheduleItems = await response.json();
-    console.log(`✅ Fetched ${scheduleItems.length} schedule items from AzuraCast`);
-    scheduleItems.forEach((item: AzuraCastScheduleItem) => {
-      console.log(`   📅 ${item.start} - ${item.end}: "${item.name}" (${item.type})`);
-      if (item.is_now) {
-        console.log(`      🔴 Currently playing`);
-      }
-    });
-
-    return scheduleItems;
-  } catch (error) {
-    console.error("❌ Failed to fetch AzuraCast schedule:", error);
-    return [];
-  }
-}
-
-async function fetchAzuraCastPlaylists(): Promise<AzuraCastPlaylist[]> {
-  const baseUrl = process.env.AZURACAST_URL || "https://radio.onestowatch.live";
-  const stationId = process.env.AZURACAST_STATION_ID || "2";
-  const apiKey = process.env.AZURACAST_API_KEY;
-
-  if (!apiKey) {
-    console.warn("⚠️ AZURACAST_API_KEY not set, cannot fetch playlists");
-    return [];
-  }
-
-  try {
-    console.log(`📡 Fetching playlists from: ${baseUrl}/api/station/${stationId}/playlists`);
-    const response = await fetch(`${baseUrl}/api/station/${stationId}/playlists`, {
-      headers: {
-        "X-API-Key": apiKey,
-        "Accept": "application/json"
-      }
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error(`❌ AzuraCast playlists API error: ${response.status}`, text);
-      return [];
-    }
-
-    const playlists = await response.json();
-    console.log(`✅ Fetched ${playlists.length} playlists from AzuraCast`);
-    return playlists;
-  } catch (error) {
-    console.error("❌ Failed to fetch AzuraCast playlists:", error);
-    return [];
-  }
-}
-
-async function fetchNowPlaying(): Promise<string | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_AZURACAST_URL || "https://onestowatch.live";
-  const stationShortcode = process.env.NEXT_PUBLIC_STATION_SHORTCODE || "otw_radio";
-
-  try {
-    const response = await fetch(`${baseUrl}/api/nowplaying/${stationShortcode}`);
-    if (!response.ok) return null;
-    
-    const data: NowPlayingResponse = await response.json();
-    const playlist = data.now_playing?.playlist || null;
-    console.log(`🎵 Currently playing playlist: ${playlist || "none"}`);
-    return playlist;
-  } catch (error) {
-    console.error("❌ Failed to fetch now playing:", error);
+    return (await res.json()) as T;
+  } catch (err) {
+    console.error(`AzuraCast fetch failed for ${url}:`, err);
     return null;
   }
 }
 
-function getCurrentTimeBlock(schedule: Array<{ start: string; end: string }>): number {
-  const now = new Date();
-  const et = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
-  const currentTime = et.getHours() * 100 + et.getMinutes();
-
-  for (let i = 0; i < schedule.length; i++) {
-    const start = parseInt(schedule[i].start);
-    const end = parseInt(schedule[i].end);
-    if (currentTime >= start && currentTime < end) {
-      return i;
+/** One call per day, each asking for everything ongoing or upcoming from that
+ *  day's midnight. This gets past slots for today and does not depend on how
+ *  far ahead AzuraCast computes its schedule. */
+async function fetchScheduleRows(dayStarts: number[]): Promise<{ rows: AzuraScheduleRow[]; ok: boolean }> {
+  const results = await Promise.all(
+    dayStarts.map((start) =>
+      fetchJson<AzuraScheduleRow[]>(
+        `${AZURACAST_URL}/api/station/${encodeURIComponent(STATION)}/schedule?rows=100&now=${encodeURIComponent(
+          new Date(start).toISOString()
+        )}`
+      )
+    )
+  );
+  const seen = new Set<string>();
+  const rows: AzuraScheduleRow[] = [];
+  for (const list of results) {
+    for (const row of list || []) {
+      const key = `${row.type}:${row.id}:${row.start_timestamp}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push(row);
     }
   }
-  return -1;
+  return { rows, ok: results.some((r) => r !== null) };
 }
 
-function parseAzuraCastTime(timeStr: string): number {
-  const match = timeStr.match(/(\d+):(\d+)(am|pm)/i);
-  if (!match) return 0;
-  
-  let hours = parseInt(match[1]);
-  const minutes = parseInt(match[2]);
-  const period = match[3].toLowerCase();
-  
-  if (period === 'pm' && hours !== 12) hours += 12;
-  if (period === 'am' && hours === 12) hours = 0;
-  
-  return hours * 100 + minutes;
+async function fetchLive(): Promise<{ isLive: boolean; streamerName: string | null; since: number | null }> {
+  const data = await fetchJson<{ live?: { is_live?: boolean; streamer_name?: string; broadcast_start?: number | null } }>(
+    `${AZURACAST_URL}/api/nowplaying/${encodeURIComponent(STATION)}`
+  );
+  const live = data?.live;
+  return {
+    isLive: Boolean(live?.is_live),
+    streamerName: live?.is_live ? live.streamer_name || null : null,
+    since: live?.broadcast_start ? live.broadcast_start * 1000 : null,
+  };
 }
 
-function extractWeeklyFeatures(playlists: AzuraCastPlaylist[]): Record<string, { title: string; description: string }> {
-  const features: Record<string, { title: string; description: string }> = {};
-  
-  console.log("\n🔍 Extracting weekly features from playlists...");
-  
-  playlists.forEach(playlist => {
-    if (!playlist.is_enabled) return;
-    
-    playlist.schedule_items.forEach(schedule => {
-      if (schedule.days.length === 1) {
-        const dayNum = schedule.days[0];
-        console.log(`   📅 Day ${dayNum}: "${playlist.name}"`);
-        
-        if (dayNum >= 1 && dayNum <= 5 && schedule.start_time === 1000 && schedule.end_time === 1200) {
-          features[dayNum.toString()] = {
-            title: playlist.name,
-            description: ""
-          };
-        }
-      }
-    });
-  });
-  
-  console.log(`✅ Found ${Object.keys(features).length} weekly features\n`);
-  return features;
+function toItems(rows: AzuraScheduleRow[]): UnifiedScheduleItem[] {
+  return rows
+    .map((row) => {
+      const start = row.start_timestamp ? row.start_timestamp * 1000 : Date.parse(row.start);
+      const end = row.end_timestamp ? row.end_timestamp * 1000 : Date.parse(row.end);
+      return {
+        key: `${row.type}-${row.id}-${start}`,
+        type: row.type === "streamer" ? "streamer" : "playlist",
+        title: row.title || row.name,
+        description: row.description || null,
+        start,
+        end,
+        continuesFromPreviousDay: false,
+      } as UnifiedScheduleItem;
+    })
+    .filter((i) => Number.isFinite(i.start) && Number.isFinite(i.end) && i.end > i.start);
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+/** Clip items to the day, resolve overlaps (live beats streamer beats playlist,
+ *  then the later start wins, like AzuraCast's interrupt), fill gaps with rotation. */
+function buildDay(date: string, start: number, end: number, items: UnifiedScheduleItem[]): UnifiedScheduleDay {
+  const priority: Record<string, number> = { live: 3, streamer: 2, playlist: 1, rotation: 0 };
+  const inDay = items
+    .filter((i) => i.end > start && i.start < end)
+    .map((i) => ({
+      ...i,
+      key: `${i.key}-${date}`,
+      continuesFromPreviousDay: i.start < start,
+      start: Math.max(i.start, start),
+      end: Math.min(i.end, end),
+    }))
+    .sort((a, b) => a.start - b.start || priority[b.type] - priority[a.type]);
+
+  // Split the day at every item edge, pick the item on air in each segment,
+  // then merge consecutive segments of the same item.
+  const bounds = Array.from(new Set([start, end, ...inDay.flatMap((i) => [i.start, i.end])])).sort((a, b) => a - b);
+  const out: UnifiedScheduleItem[] = [];
+  let lastSource: string | null = null; // item the previous segment came from
+  for (let b = 0; b < bounds.length - 1; b++) {
+    const segStart = bounds[b];
+    const segEnd = bounds[b + 1];
+    const onAir = inDay
+      .filter((i) => i.start <= segStart && i.end >= segEnd)
+      .sort((x, y) => priority[y.type] - priority[x.type] || y.start - x.start)[0];
+    const prev = out[out.length - 1];
+    if (onAir) {
+      if (prev && lastSource === onAir.key && prev.end === segStart) prev.end = segEnd;
+      // A playlist resumed after a live slot gets its own row and its own key.
+      else out.push({ ...onAir, key: `${onAir.key}-${segStart}`, start: segStart, end: segEnd });
+      lastSource = onAir.key;
+      continue;
+    }
+    lastSource = null;
+    if (prev && prev.type === "rotation" && prev.end === segStart) {
+      prev.end = segEnd;
+    } else {
+      out.push({
+        key: `rotation-${segStart}`,
+        type: "rotation",
+        title: rotation.title,
+        description: rotation.description,
+        start: segStart,
+        end: segEnd,
+        continuesFromPreviousDay: false,
+      });
+    }
+  }
+  return { date, start, end, items: out };
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse<UnifiedScheduleResponse | { error: string }>) {
   if (req.method !== "GET") {
+    res.setHeader("Allow", "GET");
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try {
-    console.log("\n🔄 /api/schedule called");
-    
-    const [azuraSchedule, playlists] = await Promise.all([
-      fetchAzuraCastSchedule(),
-      fetchAzuraCastPlaylists()
-    ]);
-    
-    const nowPlayingPlaylist = await fetchNowPlaying();
+  const tz = grid.station.timezone || STATION_TZ;
+  const now = Date.now();
 
-    const dailySchedule = [
-      { start: "0000", end: "1000", block: "overnight" },
-      { start: "1000", end: "1200", block: "weekly_feature" },
-      { start: "1200", end: "1500", block: "guest_curator" },
-      { start: "1500", end: "1700", block: "weekly_feature", airing: "repeat" },
-      { start: "1700", end: "2400", block: "overnight" }
-    ];
-
-    const currentBlockIndex = getCurrentTimeBlock(dailySchedule);
-    console.log(`⏰ Current block index: ${currentBlockIndex}`);
-
-    const daily = dailySchedule.map((slot, index) => {
-      console.log(`\n🔍 Matching slot ${slot.start}-${slot.end} (${slot.block})`);
-      
-      const slotStart = parseInt(slot.start);
-      const slotEnd = parseInt(slot.end);
-      
-      const matchingItem = azuraSchedule.find(item => {
-        const itemStart = parseAzuraCastTime(item.start);
-        const itemEnd = parseAzuraCastTime(item.end);
-        
-        console.log(`   📋 Checking "${item.name}": ${itemStart}-${itemEnd} vs slot ${slotStart}-${slotEnd}`);
-        
-        const matches = itemStart === slotStart || (itemStart >= slotStart && itemStart < slotEnd);
-        
-        if (matches) {
-          console.log(`   ✅ Matched! "${item.name}"`);
-        }
-        
-        return matches;
-      });
-
-      if (!matchingItem) {
-        console.log(`   ❌ No schedule item matched this slot`);
-      }
-
-      return {
-        ...slot,
-        playlist_id: matchingItem?.playlist_id?.toString() || null,
-        playlist_name: matchingItem?.name || null,
-        playlist_description: matchingItem?.description || null,
-        is_current: index === currentBlockIndex && matchingItem?.is_now
-      };
-    });
-
-    console.log(`\n📊 Final schedule with ${daily.filter(s => s.playlist_name).length}/${daily.length} slots with playlists\n`);
-
-    const blocks = {
-      "overnight": {
-        title: "OTW Playlist",
-        description: "Continuous rotation of Ones To Watch artists"
-      },
-      "weekly_feature": {
-        title: "Weekly Feature",
-        description: "Today's featured programming"
-      },
-      "guest_curator": {
-        title: "Guest Curator",
-        description: "Curated by special guests"
-      }
-    };
-
-    const features = extractWeeklyFeatures(playlists);
-
-    const response = {
-      station: {
-        name: "OTW Radio",
-        timezone: "America/New_York"
-      },
-      daily,
-      blocks,
-      features,
-      debug: {
-        azuracast_schedule_count: azuraSchedule.length,
-        azuracast_playlists_count: playlists.length,
-        weekly_features_found: Object.keys(features).length
-      }
-    };
-
-    res.status(200).json(response);
-  } catch (error) {
-    console.error("❌ Failed to load schedule:", error);
-    res.status(500).json({ error: "Failed to load schedule" });
+  // Day windows in station time, today first.
+  const windows: { date: string; start: number; end: number }[] = [];
+  let key = zonedDateKey(now, tz);
+  for (let i = 0; i < DAYS_AHEAD; i++) {
+    const next = nextDateKey(key);
+    windows.push({ date: key, start: zonedMidnight(key, tz), end: zonedMidnight(next, tz) });
+    key = next;
   }
+
+  const [{ rows, ok }, live] = await Promise.all([fetchScheduleRows(windows.map((w) => w.start)), fetchLive()]);
+  const items = toItems(rows);
+
+  // Someone is on air without a scheduled slot right now: show it as a live item.
+  const scheduledStreamerNow = items.some((i) => i.type === "streamer" && i.start <= now && i.end > now);
+  if (live.isLive && !scheduledStreamerNow) {
+    const liveStart = live.since && live.since <= now ? live.since : now;
+    items.push({
+      key: `live-${liveStart}`,
+      type: "live",
+      title: live.streamerName ? `Live: ${live.streamerName}` : "Live on OTW Radio",
+      description: null,
+      start: liveStart,
+      // Unknown end: hold the slot for 15 minutes past now; the next refresh extends it.
+      end: now + 15 * 60 * 1000,
+      continuesFromPreviousDay: false,
+    });
+  }
+
+  const body: UnifiedScheduleResponse = {
+    station: { name: grid.station.name, timezone: tz },
+    generatedAt: now,
+    live: { isLive: live.isLive, streamerName: live.streamerName },
+    days: windows.map((w) => buildDay(w.date, w.start, w.end, items)),
+    azuracastOk: ok,
+  };
+
+  res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+  return res.status(200).json(body);
 }
