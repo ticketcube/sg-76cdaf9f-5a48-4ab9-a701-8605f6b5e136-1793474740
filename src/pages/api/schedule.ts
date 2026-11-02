@@ -21,11 +21,12 @@ async function fetchAzuraCastPlaylists(): Promise<AzuraCastPlaylist[]> {
   const stationId = process.env.AZURACAST_STATION_ID || "2";
 
   if (!apiKey) {
-    console.warn("AZURACAST_API_KEY not set, returning empty playlists");
+    console.error("❌ AZURACAST_API_KEY not set in .env.local");
     return [];
   }
 
   try {
+    console.log(`📡 Fetching playlists from: ${baseUrl}/api/station/${stationId}/playlists`);
     const response = await fetch(`${baseUrl}/api/station/${stationId}/playlists`, {
       headers: {
         "X-API-Key": apiKey,
@@ -34,13 +35,25 @@ async function fetchAzuraCastPlaylists(): Promise<AzuraCastPlaylist[]> {
     });
 
     if (!response.ok) {
-      console.error("AzuraCast API error:", response.status, await response.text());
+      const text = await response.text();
+      console.error(`❌ AzuraCast API error: ${response.status}`, text);
       return [];
     }
 
-    return await response.json();
+    const playlists = await response.json();
+    console.log(`✅ Fetched ${playlists.length} playlists from AzuraCast`);
+    playlists.forEach((p: AzuraCastPlaylist) => {
+      console.log(`   📀 "${p.name}" (ID: ${p.id}) - ${p.schedule_items?.length || 0} schedule items`);
+      if (p.schedule_items && p.schedule_items.length > 0) {
+        p.schedule_items.forEach(item => {
+          console.log(`      ⏰ ${item.start_time} - ${item.end_time}`);
+        });
+      }
+    });
+
+    return playlists;
   } catch (error) {
-    console.error("Failed to fetch AzuraCast playlists:", error);
+    console.error("❌ Failed to fetch AzuraCast playlists:", error);
     return [];
   }
 }
@@ -54,17 +67,13 @@ async function fetchNowPlaying(): Promise<string | null> {
     if (!response.ok) return null;
     
     const data: NowPlayingResponse = await response.json();
-    return data.now_playing?.playlist || null;
+    const playlist = data.now_playing?.playlist || null;
+    console.log(`🎵 Currently playing playlist: ${playlist || "none"}`);
+    return playlist;
   } catch (error) {
-    console.error("Failed to fetch now playing:", error);
+    console.error("❌ Failed to fetch now playing:", error);
     return null;
   }
-}
-
-function timeToHHMM(time: number): string {
-  const hours = Math.floor(time / 100);
-  const minutes = time % 100;
-  return `${String(hours).padStart(2, '0')}${String(minutes).padStart(2, '0')}`;
 }
 
 function getCurrentTimeBlock(schedule: Array<{ start: string; end: string }>): number {
@@ -91,12 +100,11 @@ export default async function handler(
   }
 
   try {
+    console.log("\n🔄 /api/schedule called");
+    
     // Fetch playlists from AzuraCast
     const playlists = await fetchAzuraCastPlaylists();
     const nowPlayingPlaylist = await fetchNowPlaying();
-
-    console.log("AzuraCast playlists:", JSON.stringify(playlists, null, 2));
-    console.log("Now playing playlist:", nowPlayingPlaylist);
 
     // Static daily schedule structure
     const dailySchedule = [
@@ -108,38 +116,36 @@ export default async function handler(
     ];
 
     const currentBlockIndex = getCurrentTimeBlock(dailySchedule);
+    console.log(`⏰ Current block index: ${currentBlockIndex}`);
 
-    // Match playlists to schedule blocks
+    // Match playlists to schedule blocks using schedule_items
     const daily = dailySchedule.map((slot, index) => {
-      // Find playlist that matches this time slot
+      console.log(`\n🔍 Matching slot ${slot.start}-${slot.end} (${slot.block})`);
+      
+      // Find playlist with schedule_items that match this slot
       const matchingPlaylist = playlists.find(p => {
-        console.log(`Checking playlist "${p.name}" for slot ${slot.start}-${slot.end}`);
-        console.log(`  Schedule items:`, p.schedule_items);
-        
+        // If no schedule_items, this is the default "OTW Playlist" (plays overnight)
         if (!p.schedule_items || p.schedule_items.length === 0) {
-          // OTW Playlist has no schedule (plays when nothing else is scheduled)
-          const matches = slot.block === "overnight";
-          console.log(`  No schedule items, matches overnight: ${matches}`);
-          return matches;
+          return slot.block === "overnight";
         }
         
-        // Check if any schedule item overlaps with this slot
-        const matches = p.schedule_items.some(item => {
-          const itemStart = item.start_time;
-          const itemEnd = item.end_time;
+        // Check if any schedule_item matches this slot's time
+        return p.schedule_items.some(item => {
           const slotStart = parseInt(slot.start);
           const slotEnd = parseInt(slot.end);
+          const match = item.start_time === slotStart && item.end_time === slotEnd;
           
-          console.log(`  Comparing: item ${itemStart}-${itemEnd} vs slot ${slotStart}-${slotEnd}`);
-          const match = itemStart === slotStart && itemEnd === slotEnd;
-          console.log(`  Match: ${match}`);
+          if (match) {
+            console.log(`   ✅ Matched! "${p.name}" has schedule ${item.start_time}-${item.end_time}`);
+          }
+          
           return match;
         });
-        
-        return matches;
       });
 
-      console.log(`Slot ${slot.start}-${slot.end}: matched playlist "${matchingPlaylist?.name || 'none'}"`);
+      if (!matchingPlaylist) {
+        console.log(`   ❌ No playlist matched this slot`);
+      }
 
       return {
         ...slot,
@@ -148,6 +154,8 @@ export default async function handler(
         is_current: index === currentBlockIndex && matchingPlaylist?.name === nowPlayingPlaylist
       };
     });
+
+    console.log(`\n📊 Final schedule with ${daily.filter(s => s.playlist_name).length}/${daily.length} slots with playlists\n`);
 
     const blocks = {
       "overnight": {
@@ -180,16 +188,19 @@ export default async function handler(
       daily,
       blocks,
       features,
-      azuracast_playlists: playlists.map(p => ({
-        id: p.id,
-        name: p.name,
-        scheduled: p.schedule_items && p.schedule_items.length > 0
-      }))
+      debug: {
+        azuracast_playlists_count: playlists.length,
+        azuracast_playlists: playlists.map(p => ({
+          id: p.id,
+          name: p.name,
+          schedule_items_count: p.schedule_items?.length || 0
+        }))
+      }
     };
 
     res.status(200).json(response);
   } catch (error) {
-    console.error("Failed to load schedule:", error);
+    console.error("❌ Failed to load schedule:", error);
     res.status(500).json({ error: "Failed to load schedule" });
   }
 }
