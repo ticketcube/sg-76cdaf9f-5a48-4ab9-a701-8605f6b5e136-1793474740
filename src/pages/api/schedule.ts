@@ -46,7 +46,7 @@ async function fetchAzuraCastPlaylists(): Promise<AzuraCastPlaylist[]> {
       console.log(`   📀 "${p.name}" (ID: ${p.id}) - ${p.schedule_items?.length || 0} schedule items`);
       if (p.schedule_items && p.schedule_items.length > 0) {
         p.schedule_items.forEach(item => {
-          console.log(`      ⏰ ${item.start_time} - ${item.end_time}`);
+          console.log(`      ⏰ Schedule item:`, JSON.stringify(item, null, 2));
         });
       }
     });
@@ -122,6 +122,11 @@ export default async function handler(
     const daily = dailySchedule.map((slot, index) => {
       console.log(`\n🔍 Matching slot ${slot.start}-${slot.end} (${slot.block})`);
       
+      // Get current day of week (1 = Monday, 7 = Sunday)
+      const now = new Date();
+      const et = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+      const dayOfWeek = et.getDay() === 0 ? 7 : et.getDay(); // Convert Sunday from 0 to 7
+      
       // Find playlist with schedule_items that match this slot
       const matchingPlaylist = playlists.find(p => {
         // If no schedule_items, this is the default "OTW Playlist" (plays overnight)
@@ -129,14 +134,23 @@ export default async function handler(
           return slot.block === "overnight";
         }
         
-        // Check if any schedule_item matches this slot's time
+        // Check if any schedule_item matches this slot's time AND today's day
         return p.schedule_items.some(item => {
           const slotStart = parseInt(slot.start);
           const slotEnd = parseInt(slot.end);
-          const match = item.start_time === slotStart && item.end_time === slotEnd;
+          
+          // Log the full schedule item for debugging
+          console.log(`   📋 Checking "${p.name}" schedule item:`, item);
+          console.log(`      Comparing: slot ${slotStart}-${slotEnd} on day ${dayOfWeek}`);
+          
+          // Match based on time only (if days is not specified) or time + day
+          const timeMatch = item.start_time === slotStart && item.end_time === slotEnd;
+          const dayMatch = !item.days || item.days.length === 0 || item.days.includes(dayOfWeek);
+          
+          const match = timeMatch && dayMatch;
           
           if (match) {
-            console.log(`   ✅ Matched! "${p.name}" has schedule ${item.start_time}-${item.end_time}`);
+            console.log(`   ✅ Matched! "${p.name}"`);
           }
           
           return match;
@@ -193,7 +207,8 @@ export default async function handler(
         azuracast_playlists: playlists.map(p => ({
           id: p.id,
           name: p.name,
-          schedule_items_count: p.schedule_items?.length || 0
+          schedule_items_count: p.schedule_items?.length || 0,
+          schedule_items: p.schedule_items || []
         }))
       }
     };

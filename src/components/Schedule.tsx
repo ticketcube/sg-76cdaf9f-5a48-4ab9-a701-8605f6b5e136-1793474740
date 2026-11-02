@@ -39,6 +39,11 @@ interface ScheduleData {
       id: number;
       name: string;
       schedule_items_count: number;
+      schedule_items: Array<{
+        start_time: number;
+        end_time: number;
+        days?: number[];
+      }>;
     }>;
   };
 }
@@ -168,6 +173,16 @@ export function Schedule() {
                 <div key={p.id} className="bg-background p-2 rounded border border-border">
                   <div className="font-semibold">#{p.id}: {p.name}</div>
                   <div className="text-muted-foreground">Schedule items: {p.schedule_items_count}</div>
+                  {p.schedule_items && p.schedule_items.length > 0 && (
+                    <div className="mt-1 pl-2 space-y-1">
+                      {p.schedule_items.map((item, i) => (
+                        <div key={i} className="text-muted-foreground text-[10px]">
+                          {item.start_time} - {item.end_time}
+                          {item.days && item.days.length > 0 && ` (days: ${item.days.join(',')})`}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
               <div className="mt-4 bg-background p-2 rounded border border-border">
