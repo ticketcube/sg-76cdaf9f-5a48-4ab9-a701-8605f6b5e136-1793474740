@@ -61,11 +61,11 @@ export default function EmbedSchedule() {
   ];
 
   const weeklyFeatures = [
-    { day: "MONDAY", show: schedule.features["1"]?.title || "OTW WEEKLY RECAP" },
-    { day: "TUESDAY", show: schedule.features["2"]?.title || "CHEF'S CHOICE" },
-    { day: "WEDNESDAY", show: schedule.features["3"]?.title || "OTW TOURING ARTISTS" },
-    { day: "THURSDAY", show: schedule.features["4"]?.title || "GWLMMWLG" },
-    { day: "FRIDAY", show: schedule.features["5"]?.title || "ARTIST INTERVIEW" },
+    { day: "MONDAY", show: schedule.features["1"]?.title || "Not scheduled" },
+    { day: "TUESDAY", show: schedule.features["2"]?.title || "Not scheduled" },
+    { day: "WEDNESDAY", show: schedule.features["3"]?.title || "Not scheduled" },
+    { day: "THURSDAY", show: schedule.features["4"]?.title || "Not scheduled" },
+    { day: "FRIDAY", show: schedule.features["5"]?.title || "Not scheduled" },
   ];
 
   return (

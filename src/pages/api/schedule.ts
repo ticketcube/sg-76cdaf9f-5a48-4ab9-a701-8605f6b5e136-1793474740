@@ -12,6 +12,24 @@ interface AzuraCastScheduleItem {
   description?: string;
 }
 
+interface AzuraCastPlaylist {
+  id: number;
+  name: string;
+  short_name: string;
+  type: string;
+  source: string;
+  weight: number;
+  is_enabled: boolean;
+  schedule_items: Array<{
+    id: number;
+    start_time: number;
+    end_time: number;
+    start_date: string | null;
+    end_date: string | null;
+    days: number[];
+  }>;
+}
+
 interface NowPlayingResponse {
   now_playing?: {
     playlist?: string;
@@ -52,6 +70,40 @@ async function fetchAzuraCastSchedule(): Promise<AzuraCastScheduleItem[]> {
   }
 }
 
+async function fetchAzuraCastPlaylists(): Promise<AzuraCastPlaylist[]> {
+  const baseUrl = process.env.AZURACAST_URL || "https://radio.onestowatch.live";
+  const stationId = process.env.AZURACAST_STATION_ID || "2";
+  const apiKey = process.env.AZURACAST_API_KEY;
+
+  if (!apiKey) {
+    console.warn("⚠️ AZURACAST_API_KEY not set, cannot fetch playlists");
+    return [];
+  }
+
+  try {
+    console.log(`📡 Fetching playlists from: ${baseUrl}/api/station/${stationId}/playlists`);
+    const response = await fetch(`${baseUrl}/api/station/${stationId}/playlists`, {
+      headers: {
+        "X-API-Key": apiKey,
+        "Accept": "application/json"
+      }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`❌ AzuraCast playlists API error: ${response.status}`, text);
+      return [];
+    }
+
+    const playlists = await response.json();
+    console.log(`✅ Fetched ${playlists.length} playlists from AzuraCast`);
+    return playlists;
+  } catch (error) {
+    console.error("❌ Failed to fetch AzuraCast playlists:", error);
+    return [];
+  }
+}
+
 async function fetchNowPlaying(): Promise<string | null> {
   const baseUrl = process.env.NEXT_PUBLIC_AZURACAST_URL || "https://onestowatch.live";
   const stationShortcode = process.env.NEXT_PUBLIC_STATION_SHORTCODE || "otw_radio";
@@ -86,7 +138,6 @@ function getCurrentTimeBlock(schedule: Array<{ start: string; end: string }>): n
 }
 
 function parseAzuraCastTime(timeStr: string): number {
-  // AzuraCast returns times like "10:00am" or "3:00pm"
   const match = timeStr.match(/(\d+):(\d+)(am|pm)/i);
   if (!match) return 0;
   
@@ -100,6 +151,33 @@ function parseAzuraCastTime(timeStr: string): number {
   return hours * 100 + minutes;
 }
 
+function extractWeeklyFeatures(playlists: AzuraCastPlaylist[]): Record<string, { title: string; description: string }> {
+  const features: Record<string, { title: string; description: string }> = {};
+  
+  console.log("\n🔍 Extracting weekly features from playlists...");
+  
+  playlists.forEach(playlist => {
+    if (!playlist.is_enabled) return;
+    
+    playlist.schedule_items.forEach(schedule => {
+      if (schedule.days.length === 1) {
+        const dayNum = schedule.days[0];
+        console.log(`   📅 Day ${dayNum}: "${playlist.name}"`);
+        
+        if (dayNum >= 1 && dayNum <= 5 && schedule.start_time === 1000 && schedule.end_time === 1200) {
+          features[dayNum.toString()] = {
+            title: playlist.name,
+            description: ""
+          };
+        }
+      }
+    });
+  });
+  
+  console.log(`✅ Found ${Object.keys(features).length} weekly features\n`);
+  return features;
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -111,11 +189,13 @@ export default async function handler(
   try {
     console.log("\n🔄 /api/schedule called");
     
-    // Fetch schedule from AzuraCast
-    const azuraSchedule = await fetchAzuraCastSchedule();
+    const [azuraSchedule, playlists] = await Promise.all([
+      fetchAzuraCastSchedule(),
+      fetchAzuraCastPlaylists()
+    ]);
+    
     const nowPlayingPlaylist = await fetchNowPlaying();
 
-    // Static daily schedule structure
     const dailySchedule = [
       { start: "0000", end: "1000", block: "overnight" },
       { start: "1000", end: "1200", block: "weekly_feature" },
@@ -127,21 +207,18 @@ export default async function handler(
     const currentBlockIndex = getCurrentTimeBlock(dailySchedule);
     console.log(`⏰ Current block index: ${currentBlockIndex}`);
 
-    // Match AzuraCast schedule items to our time slots
     const daily = dailySchedule.map((slot, index) => {
       console.log(`\n🔍 Matching slot ${slot.start}-${slot.end} (${slot.block})`);
       
       const slotStart = parseInt(slot.start);
       const slotEnd = parseInt(slot.end);
       
-      // Find AzuraCast schedule item that matches this time slot
       const matchingItem = azuraSchedule.find(item => {
         const itemStart = parseAzuraCastTime(item.start);
         const itemEnd = parseAzuraCastTime(item.end);
         
         console.log(`   📋 Checking "${item.name}": ${itemStart}-${itemEnd} vs slot ${slotStart}-${slotEnd}`);
         
-        // Match if the times overlap or align
         const matches = itemStart === slotStart || (itemStart >= slotStart && itemStart < slotEnd);
         
         if (matches) {
@@ -181,13 +258,7 @@ export default async function handler(
       }
     };
 
-    const features = {
-      "1": { title: "OTW Weekly Recap", description: "The week in OTW: news, releases and clips." },
-      "2": { title: "Chef's Choice", description: "Curator picks from the OTW editorial team." },
-      "3": { title: "OTW Touring Artists", description: "Artists on the road this week." },
-      "4": { title: "GWLMMWLG", description: "Girls Who Like Making Music With Like Girls." },
-      "5": { title: "Artist Interview", description: "One long-form artist interview." }
-    };
+    const features = extractWeeklyFeatures(playlists);
 
     const response = {
       station: {
@@ -199,15 +270,8 @@ export default async function handler(
       features,
       debug: {
         azuracast_schedule_count: azuraSchedule.length,
-        azuracast_schedule: azuraSchedule.map(item => ({
-          name: item.name,
-          start: item.start,
-          end: item.end,
-          type: item.type,
-          is_now: item.is_now,
-          start_parsed: parseAzuraCastTime(item.start),
-          end_parsed: parseAzuraCastTime(item.end)
-        }))
+        azuracast_playlists_count: playlists.length,
+        weekly_features_found: Object.keys(features).length
       }
     };
 
