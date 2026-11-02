@@ -29,6 +29,9 @@ Tasks 1, 2, 4 and 5 are already done. Task 6 exists because task 1's player poin
 
 ## Guardrails for every task
 
+Softgen should read `docs/AZURACAST_FOR_SOFTGEN.md` before any AzuraCast work.
+
+
 - No AzuraCast, AIMC or Supabase keys in client code. Only `NEXT_PUBLIC_*` values reach the browser.
 - Never show the next song title. The licenses forbid advance song lists; show the next programme block instead.
 - Live venue shows air once. No replay unless the artist opts in.

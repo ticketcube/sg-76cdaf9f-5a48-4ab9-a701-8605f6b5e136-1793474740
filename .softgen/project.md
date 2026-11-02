@@ -25,3 +25,6 @@ Style: Premium, live-event, music-forward.
 - Persistent sticky audio player that continues playing across page navigation
 - Programming schedule grid showing the 5 standard daily blocks and rotating weekly features
 - Dynamic video player takeover component for artist-opt-in simulcasts
+
+## AzuraCast rules
+Before any task that touches the stream, now playing, schedule data, hosts or AzuraCast, read `otw-radio/docs/AZURACAST_FOR_SOFTGEN.md`. It lists which AzuraCast endpoints the site may call, which must stay server-side, and what the site must never build (next song titles, on-demand playback, song requests, media uploads, DJ passwords).
