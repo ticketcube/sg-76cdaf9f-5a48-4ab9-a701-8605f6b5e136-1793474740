@@ -1,12 +1,13 @@
-import { Schedule } from "@/components/Schedule";
+import { ScheduleCard } from "@/components/ScheduleCard";
 
-// Public widget for onestowatch.com: <iframe src="https://onestowatch.live/embed/schedule">.
-// Same unified AzuraCast schedule as the staff page, in a compact layout.
+// Public widget for onestowatch.com, styled to match /embed/player:
+//   <iframe src="https://onestowatch.live/embed/schedule" width="100%" height="640"></iframe>
+// For the player with the schedule under it, use /embed/player?schedule=1.
 export default function EmbedSchedule() {
   return (
-    <div className="min-h-screen bg-background text-foreground p-4">
-      <div className="max-w-4xl mx-auto">
-        <Schedule embed />
+    <div className="flex justify-center min-h-screen bg-background p-4">
+      <div className="w-full max-w-md">
+        <ScheduleCard variant="standalone" />
       </div>
     </div>
   );

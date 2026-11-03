@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { useRouter } from "next/router";
+import { ScheduleCard } from "@/components/ScheduleCard";
 
 interface NowPlaying {
   now_playing: {
@@ -18,6 +20,9 @@ interface NowPlaying {
 }
 
 export default function EmbedPlayer() {
+  // /embed/player?schedule=1 adds the schedule card under the player.
+  const router = useRouter();
+  const showSchedule = router.isReady && ["1", "true"].includes(String(router.query.schedule));
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -194,6 +199,8 @@ export default function EmbedPlayer() {
             className="flex-1"
           />
         </div>
+
+        {showSchedule && <ScheduleCard variant="attached" className="mt-3" />}
       </div>
     </div>
   );
