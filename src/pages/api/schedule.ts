@@ -13,13 +13,13 @@ interface AzuraCastScheduleItem {
 }
 
 async function fetchAzuraCastSchedule(): Promise<AzuraCastScheduleItem[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_AZURACAST_URL || "https://radio.onestowatch.live";
-  const stationId = process.env.AZURACAST_STATION_ID || "2";
+  const baseUrl = "https://radio.onestowatch.live";
+  const stationId = "otw_radio";
 
   try {
     const response = await fetch(`${baseUrl}/api/station/${stationId}/schedule`, {
       headers: { "Accept": "application/json" },
-      next: { revalidate: 60 }
+      cache: "no-store"
     });
 
     if (!response.ok) {
@@ -28,7 +28,7 @@ async function fetchAzuraCastSchedule(): Promise<AzuraCastScheduleItem[]> {
     }
 
     const scheduleItems = await response.json();
-    return scheduleItems;
+    return Array.isArray(scheduleItems) ? scheduleItems : [];
   } catch (error) {
     console.error("Failed to fetch AzuraCast schedule:", error);
     return [];
@@ -102,6 +102,7 @@ export default async function handler(
       timezone: "America/New_York"
     };
 
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     res.status(200).json(response);
   } catch (error) {
     console.error("Failed to load schedule:", error);
