@@ -10,7 +10,7 @@ interface ScheduleItem {
   description?: string;
   is_now: boolean;
   type: string;
-  parsed_time: {
+  parsed_time?: {
     hours: number;
     minutes: number;
     time24: number;
@@ -31,6 +31,14 @@ function formatTime(hours: number, minutes: number): string {
   const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
   const displayMinutes = minutes.toString().padStart(2, "0");
   return `${displayHour}:${displayMinutes} ${period}`;
+}
+
+function getDisplayTime(item: ScheduleItem): string {
+  if (item.parsed_time?.hours !== undefined && item.parsed_time?.minutes !== undefined) {
+    return formatTime(item.parsed_time.hours, item.parsed_time.minutes);
+  }
+  // Fallback to start time string if parsed_time is missing
+  return item.start || "--:--";
 }
 
 export function Schedule() {
@@ -118,7 +126,7 @@ export function Schedule() {
                       : "bg-gray-100 text-gray-700"
                   }`}>
                     <Clock className="w-3.5 h-3.5" />
-                    {formatTime(item.parsed_time.hours, item.parsed_time.minutes)}
+                    {getDisplayTime(item)}
                   </div>
                 </div>
                 
@@ -176,7 +184,7 @@ export function Schedule() {
                           className="flex items-start gap-4 p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all"
                         >
                           <div className="shrink-0 font-mono text-sm text-gray-600 px-3 py-1 bg-gray-100 rounded-full">
-                            {formatTime(item.parsed_time.hours, item.parsed_time.minutes)}
+                            {getDisplayTime(item)}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-gray-900">{item.name}</p>
