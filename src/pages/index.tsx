@@ -144,24 +144,27 @@ export default function EmbedPlayer() {
                             </>
                         ) : song ? (
                             <>
-                                {isLive && (
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="bg-primary text-primary-foreground font-mono text-[10px] px-2 py-0.5 rounded">
-                                            LIVE
-                                        </span>
-                                        {streamerName && (
-                                            <span className="text-[10px] text-muted-foreground font-mono">
-                                                {streamerName}
+                                {isLive && streamerName ? (
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="bg-primary text-primary-foreground font-mono text-[10px] px-2 py-0.5 rounded">
+                                                LIVE
                                             </span>
-                                        )}
+                                        </div>
+                                        <div className="font-semibold text-foreground text-sm">
+                                            {streamerName}
+                                        </div>
                                     </div>
+                                ) : (
+                                    <>
+                                        <div className="font-semibold text-foreground truncate text-sm">
+                                            {song.title || "Unknown Track"}
+                                        </div>
+                                        <div className="text-muted text-xs truncate">
+                                            {song.artist || "Unknown Artist"}
+                                        </div>
+                                    </>
                                 )}
-                                <div className="font-semibold text-foreground truncate text-sm">
-                                    {song.title || "Unknown Track"}
-                                </div>
-                                <div className="text-muted text-xs truncate">
-                                    {song.artist || "Unknown Artist"}
-                                </div>
                             </>
                         ) : (
                             <>

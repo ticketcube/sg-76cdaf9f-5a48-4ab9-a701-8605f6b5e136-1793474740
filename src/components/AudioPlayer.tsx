@@ -112,26 +112,32 @@ export function AudioPlayer() {
 
       <div className="p-6 space-y-6">
         <div className="text-center space-y-2">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            {isLive && (
-              <>
-                <Badge className="bg-primary text-primary-foreground font-mono text-xs px-2 py-0.5">
-                  LIVE
-                </Badge>
-                {streamerName && (
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {streamerName}
-                  </span>
+          {isLive && streamerName ? (
+            <>
+              <Badge className="bg-primary text-primary-foreground font-mono text-xs px-3 py-1">
+                LIVE
+              </Badge>
+              <h2 className="text-2xl font-bold text-white">
+                {streamerName}
+              </h2>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                {isLive && (
+                  <Badge className="bg-primary text-primary-foreground font-mono text-xs px-2 py-0.5">
+                    LIVE
+                  </Badge>
                 )}
-              </>
-            )}
-          </div>
-          <h2 className="text-2xl font-bold text-white">
-            {song?.title || "OTW Radio"}
-          </h2>
-          <p className="text-muted-foreground">
-            {song?.artist || "OnesToWatch"}
-          </p>
+              </div>
+              <h2 className="text-2xl font-bold text-white">
+                {song?.title || "OTW Radio"}
+              </h2>
+              <p className="text-muted-foreground">
+                {song?.artist || "OnesToWatch"}
+              </p>
+            </>
+          )}
         </div>
 
         <div className="flex items-center justify-center gap-6">
