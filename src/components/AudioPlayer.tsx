@@ -113,13 +113,17 @@ export function AudioPlayer() {
       <div className="p-6 space-y-6">
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <Badge className="bg-primary text-primary-foreground font-mono text-xs px-2 py-0.5">
-              LIVE
-            </Badge>
-            {isLive && streamerName && (
-              <span className="text-xs text-muted-foreground font-mono">
-                {streamerName}
-              </span>
+            {isLive && (
+              <>
+                <Badge className="bg-primary text-primary-foreground font-mono text-xs px-2 py-0.5">
+                  LIVE
+                </Badge>
+                {streamerName && (
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {streamerName}
+                  </span>
+                )}
+              </>
             )}
           </div>
           <h2 className="text-2xl font-bold text-white">
