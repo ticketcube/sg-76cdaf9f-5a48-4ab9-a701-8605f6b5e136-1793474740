@@ -193,7 +193,8 @@ export default function EmbedPlayer() {
             step={1}
             className="flex-1"
           />
-        </div>
+              </div>
+              <div className="mt-3"><ScheduleCard /></div>
       </div>
     </div>
   );
