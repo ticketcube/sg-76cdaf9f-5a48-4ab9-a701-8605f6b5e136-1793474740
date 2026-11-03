@@ -26,6 +26,13 @@ interface ScheduleData {
   timezone: string;
 }
 
+interface NowPlayingData {
+  live?: {
+    is_live: boolean;
+    streamer_name?: string;
+  };
+}
+
 function formatTime(hours: number, minutes: number): string {
   const period = hours >= 12 ? "PM" : "AM";
   const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
@@ -37,12 +44,12 @@ function getDisplayTime(item: ScheduleItem): string {
   if (item.parsed_time?.hours !== undefined && item.parsed_time?.minutes !== undefined) {
     return formatTime(item.parsed_time.hours, item.parsed_time.minutes);
   }
-  // Fallback to start time string if parsed_time is missing
   return item.start || "--:--";
 }
 
 export function Schedule() {
   const [schedule, setSchedule] = useState<ScheduleData | null>(null);
+  const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -68,6 +75,25 @@ export function Schedule() {
     return () => clearInterval(interval);
   }, [mounted]);
 
+  useEffect(() => {
+    if (!mounted) return;
+
+    const fetchNowPlaying = async () => {
+      try {
+        const response = await fetch("/api/now-playing");
+        if (!response.ok) return;
+        const data = await response.json();
+        setNowPlaying(data);
+      } catch (error) {
+        console.warn("Failed to load now playing:", error);
+      }
+    };
+
+    fetchNowPlaying();
+    const interval = setInterval(fetchNowPlaying, 15000);
+    return () => clearInterval(interval);
+  }, [mounted]);
+
   if (!mounted || !schedule) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-8">
@@ -83,6 +109,8 @@ export function Schedule() {
     );
   }
 
+  const isLive = nowPlaying?.live?.is_live ?? false;
+  const streamerName = nowPlaying?.live?.streamer_name;
   const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   return (
@@ -131,14 +159,26 @@ export function Schedule() {
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h3 className="font-semibold text-gray-900">{item.name}</h3>
-                    {item.is_now && (
+                    {item.is_now && !isLive && (
                       <Badge className="bg-primary text-white font-mono text-xs shadow-sm">
                         ON AIR
                       </Badge>
                     )}
-                    {item.type === "playlist" && (
+                    {item.is_now && isLive && (
+                      <>
+                        <Badge className="bg-primary text-white font-mono text-xs shadow-sm animate-pulse">
+                          LIVE
+                        </Badge>
+                        {streamerName && (
+                          <span className="text-xs text-gray-600 font-mono">
+                            {streamerName}
+                          </span>
+                        )}
+                      </>
+                    )}
+                    {item.type === "playlist" && !isLive && (
                       <Badge variant="outline" className="font-mono text-xs border-gray-300 text-gray-600">
                         PLAYLIST
                       </Badge>
