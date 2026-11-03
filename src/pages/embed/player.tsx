@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-
+import { ScheduleCard } from "@/pages/embed/schedule";
 interface NowPlaying {
   now_playing: {
     song: {
