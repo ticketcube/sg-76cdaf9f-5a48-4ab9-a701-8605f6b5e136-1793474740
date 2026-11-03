@@ -32,7 +32,7 @@ export default async function handler(
 
   try {
     // Fetch from AzuraCast API
-    const azuracastUrl = process.env.AZURACAST_API_URL || "https://radio.onestowatch.live/api/nowplaying/otw_radio";
+    const azuracastUrl = process.env.AZURACAST_API_URL || "https://radio.onestowatch.live/api/nowplaying/2";
     const response = await fetch(azuracastUrl);
     
     if (!response.ok) {
