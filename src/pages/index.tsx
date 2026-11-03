@@ -11,6 +11,10 @@ interface NowPlaying {
             art?: string;
         };
     };
+    live?: {
+        is_live: boolean;
+        streamer_name?: string;
+    };
     station: {
         name: string;
         listen_url: string;
@@ -105,6 +109,8 @@ export default function EmbedPlayer() {
     const toggleMute = () => setIsMuted(!isMuted);
 
     const song = nowPlaying?.now_playing.song;
+    const isLive = nowPlaying?.live?.is_live ?? false;
+    const streamerName = nowPlaying?.live?.streamer_name;
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-background p-4">
@@ -138,6 +144,18 @@ export default function EmbedPlayer() {
                             </>
                         ) : song ? (
                             <>
+                                {isLive && (
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="bg-primary text-primary-foreground font-mono text-[10px] px-2 py-0.5 rounded">
+                                            LIVE
+                                        </span>
+                                        {streamerName && (
+                                            <span className="text-[10px] text-muted-foreground font-mono">
+                                                {streamerName}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
                                 <div className="font-semibold text-foreground truncate text-sm">
                                     {song.title || "Unknown Track"}
                                 </div>
