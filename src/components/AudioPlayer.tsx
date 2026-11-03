@@ -32,7 +32,7 @@ export function AudioPlayer() {
   const [mounted, setMounted] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const streamUrl = process.env.NEXT_PUBLIC_STREAM_URL || "https://onestowatch.live/listen/otw_radio/radio.mp3";
+  const streamUrl = process.env.NEXT_PUBLIC_STREAM_URL || "https://radio.onestowatch.live/listen/otw_radio/radio.mp3";
 
   useEffect(() => {
     setMounted(true);

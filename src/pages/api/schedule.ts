@@ -13,7 +13,7 @@ interface AzuraCastScheduleItem {
 }
 
 async function fetchAzuraCastSchedule(): Promise<AzuraCastScheduleItem[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_AZURACAST_URL || "https://onestowatch.live";
+  const baseUrl = process.env.NEXT_PUBLIC_AZURACAST_URL || "https://radio.onestowatch.live";
   const stationId = process.env.AZURACAST_STATION_ID || "2";
 
   try {
