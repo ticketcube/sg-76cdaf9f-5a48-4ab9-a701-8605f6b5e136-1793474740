@@ -26,11 +26,10 @@ interface ScheduleData {
   timezone: string;
 }
 
-interface NowPlayingData {
-  live?: {
-    is_live: boolean;
-    streamer_name?: string;
-  };
+interface LiveStatusData {
+  is_live: boolean;
+  streamer_name: string | null;
+  method: "streamers_api" | "nowplaying_api" | "fallback";
 }
 
 function formatTime(hours: number, minutes: number): string {
@@ -49,7 +48,7 @@ function getDisplayTime(item: ScheduleItem): string {
 
 export function Schedule() {
   const [schedule, setSchedule] = useState<ScheduleData | null>(null);
-  const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null);
+  const [liveStatus, setLiveStatus] = useState<LiveStatusData | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -78,19 +77,19 @@ export function Schedule() {
   useEffect(() => {
     if (!mounted) return;
 
-    const fetchNowPlaying = async () => {
+    const fetchLiveStatus = async () => {
       try {
-        const response = await fetch("/api/now-playing");
+        const response = await fetch("/api/live-status");
         if (!response.ok) return;
         const data = await response.json();
-        setNowPlaying(data);
+        setLiveStatus(data);
       } catch (error) {
-        console.warn("Failed to load now playing:", error);
+        console.warn("Failed to load live status:", error);
       }
     };
 
-    fetchNowPlaying();
-    const interval = setInterval(fetchNowPlaying, 15000);
+    fetchLiveStatus();
+    const interval = setInterval(fetchLiveStatus, 10000);
     return () => clearInterval(interval);
   }, [mounted]);
 
@@ -109,8 +108,8 @@ export function Schedule() {
     );
   }
 
-  const isLive = nowPlaying?.live?.is_live ?? false;
-  const streamerName = nowPlaying?.live?.streamer_name;
+  const isLive = liveStatus?.is_live ?? false;
+  const streamerName = liveStatus?.streamer_name;
   const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   return (

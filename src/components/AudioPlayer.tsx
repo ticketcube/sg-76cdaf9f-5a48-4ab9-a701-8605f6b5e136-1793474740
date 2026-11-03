@@ -15,13 +15,15 @@ interface NowPlayingData {
       art?: string;
     };
   };
-  live?: {
-    is_live: boolean;
-    streamer_name?: string;
-  };
   listeners?: {
     current: number;
   };
+}
+
+interface LiveStatusData {
+  is_live: boolean;
+  streamer_name: string | null;
+  method: "streamers_api" | "nowplaying_api" | "fallback";
 }
 
 export function AudioPlayer() {
@@ -29,6 +31,7 @@ export function AudioPlayer() {
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
   const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null);
+  const [liveStatus, setLiveStatus] = useState<LiveStatusData | null>(null);
   const [mounted, setMounted] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -67,6 +70,26 @@ export function AudioPlayer() {
     return () => clearInterval(interval);
   }, [mounted]);
 
+  useEffect(() => {
+    if (!mounted) return;
+
+    const fetchLiveStatus = async () => {
+      try {
+        const response = await fetch("/api/live-status");
+        if (!response.ok) return;
+        const data = await response.json();
+        setLiveStatus(data);
+      } catch (error) {
+        console.warn("Could not fetch live status:", error);
+      }
+    };
+
+    fetchLiveStatus();
+    const interval = setInterval(fetchLiveStatus, 10000);
+
+    return () => clearInterval(interval);
+  }, [mounted]);
+
   const togglePlay = () => {
     if (!audioRef.current) return;
 
@@ -86,9 +109,9 @@ export function AudioPlayer() {
 
   if (!mounted) return null;
 
-  const isLive = nowPlaying?.live?.is_live ?? false;
+  const isLive = liveStatus?.is_live ?? false;
+  const streamerName = liveStatus?.streamer_name;
   const song = nowPlaying?.now_playing?.song;
-  const streamerName = nowPlaying?.live?.streamer_name;
   const albumArt = song?.art || "/OTWCOLOR_copy.png";
 
   return (
@@ -115,7 +138,7 @@ export function AudioPlayer() {
           <div className="flex items-center justify-center gap-2 mb-2">
             {isLive && (
               <>
-                <Badge className="bg-primary text-primary-foreground font-mono text-xs px-2 py-0.5">
+                <Badge className="bg-primary text-primary-foreground font-mono text-xs px-2 py-0.5 animate-pulse">
                   LIVE
                 </Badge>
                 {streamerName && (
