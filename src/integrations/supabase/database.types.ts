@@ -3745,6 +3745,8 @@ export type Database = {
       user_profiles: {
         Row: {
           avatar_url: string | null
+          azuracast_notes: string | null
+          azuracast_streamer_username: string | null
           created_at: string
           display_name: string | null
           email: string
@@ -3767,6 +3769,8 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          azuracast_notes?: string | null
+          azuracast_streamer_username?: string | null
           created_at?: string
           display_name?: string | null
           email: string
@@ -3789,6 +3793,8 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          azuracast_notes?: string | null
+          azuracast_streamer_username?: string | null
           created_at?: string
           display_name?: string | null
           email?: string
