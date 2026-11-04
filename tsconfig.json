@@ -30,6 +30,7 @@
   "exclude": [
     "node_modules",
     "worker",
-    "otw-radio"
+    "otw-radio",
+    "supabase/functions"
   ]
 }
