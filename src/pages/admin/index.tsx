@@ -1,5 +1,5 @@
-
 import { useAuth } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ export default function AdminDashboard() {
   const { profile, signOut } = useAuth();
 
   return (
-   
+    <ProtectedRoute requireAdmin>
       <div className="page-container">
         <div className="max-w-7xl mx-auto section-spacing">
           <div className="flex items-center justify-between mb-8">
@@ -127,5 +127,6 @@ export default function AdminDashboard() {
           </Card>
         </div>
       </div>
+    </ProtectedRoute>
   );
 }
