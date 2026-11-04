@@ -87,52 +87,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Fetch all streamers from AzuraCast (requires API key with station-level permissions)
     let azuracastStreamers: AzuraCastStreamer[] = [];
     
-    if (AZURACAST_API_KEY) {
-      const streamersResponse = await fetch(
-        `${AZURACAST_BASE_URL}/api/station/${STATION_SHORTCODE}/streamers`,
-        {
-          headers: { "X-API-Key": AZURACAST_API_KEY }
-        }
-      );
+    if (!AZURACAST_API_KEY) {
+      return res.status(500).json({ error: "AzuraCast API key not configured" });
+    }
 
-      if (streamersResponse.ok) {
-        azuracastStreamers = await streamersResponse.json();
-      } else {
-        console.warn(`AzuraCast streamers API error: ${streamersResponse.status}`);
+    const streamersResponse = await fetch(
+      `${AZURACAST_BASE_URL}/api/station/${STATION_SHORTCODE}/streamers`,
+      {
+        headers: { "X-API-Key": AZURACAST_API_KEY }
       }
+    );
+
+    if (!streamersResponse.ok) {
+      throw new Error(`AzuraCast streamers API error: ${streamersResponse.status}`);
     }
 
-    // Fetch all DJs from our database
-    const { data: allDJs, error: dbError } = await supabase
+    azuracastStreamers = await streamersResponse.json();
+
+    // Fetch all user profiles from our database to optionally enrich the data
+    const { data: allProfiles } = await supabase
       .from("user_profiles")
-      .select("user_id, display_name, username, email, azuracast_streamer_username")
-      .eq("role", "otwl-dj")
-      .order("display_name", { ascending: true });
+      .select("user_id, display_name, username, email, azuracast_streamer_username, role")
+      .not("azuracast_streamer_username", "is", null);
 
-    if (dbError) {
-      throw new Error(`Database error: ${dbError.message}`);
-    }
-
-    // Map all DJs with AzuraCast data
-    const djStatuses: DJStatus[] = (allDJs || []).map(dj => {
-      // Find matching AzuraCast streamer account
-      const azuracastAccount = azuracastStreamers.find(
-        s => s.streamer_username === dj.azuracast_streamer_username
+    // Map all AzuraCast streamers (source of truth) with optional database enrichment
+    const djStatuses: DJStatus[] = azuracastStreamers.map(streamer => {
+      // Find matching profile in our database
+      const profile = allProfiles?.find(
+        p => p.azuracast_streamer_username === streamer.streamer_username
       );
 
-      // Check if this DJ is currently live
+      // Check if this streamer is currently live
       const isLive = nowPlaying.live.is_live && 
-                     nowPlaying.live.streamer_name === dj.azuracast_streamer_username;
+                     nowPlaying.live.streamer_name === streamer.streamer_username;
 
       return {
-        user_id: dj.user_id,
-        display_name: dj.display_name || dj.username,
-        username: dj.username,
-        email: dj.email,
-        azuracast_streamer_username: dj.azuracast_streamer_username || "",
-        azuracast_display_name: azuracastAccount?.display_name,
-        is_active_in_azuracast: azuracastAccount?.is_active || false,
-        has_azuracast_account: !!azuracastAccount,
+        user_id: profile?.user_id || "",
+        display_name: profile?.display_name || streamer.display_name,
+        username: profile?.username || streamer.streamer_username,
+        email: profile?.email || "",
+        azuracast_streamer_username: streamer.streamer_username,
+        azuracast_display_name: streamer.display_name,
+        is_active_in_azuracast: streamer.is_active,
+        has_azuracast_account: true,
         is_live: isLive,
         ...(isLive && {
           listeners: nowPlaying.listeners.current,
@@ -142,13 +139,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             artist: nowPlaying.now_playing.song.artist
           }
         }),
-        ...(azuracastAccount?.schedule_items && {
-          schedule_items: azuracastAccount.schedule_items
+        ...(streamer.schedule_items && {
+          schedule_items: streamer.schedule_items
         })
       };
     });
 
-    // Check for unmatched live streamer (someone streaming but not in our DJ database)
+    // Check for unmatched live streamer (someone streaming but not in streamers list)
     const unmatchedLiveStreamer = nowPlaying.live.is_live && 
       !djStatuses.some(dj => dj.is_live) ? {
         streamer_name: nowPlaying.live.streamer_name,
@@ -163,7 +160,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       djs: djStatuses,
       total_djs: djStatuses.length,
-      djs_with_azuracast_accounts: djStatuses.filter(dj => dj.has_azuracast_account).length,
+      djs_with_azuracast_accounts: djStatuses.length, // All from AzuraCast
       active_in_azuracast: djStatuses.filter(dj => dj.is_active_in_azuracast).length,
       live_count: djStatuses.filter(dj => dj.is_live).length,
       unmatched_live_streamer: unmatchedLiveStreamer
