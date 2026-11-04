@@ -56,7 +56,7 @@ export function ProtectedRoute({
   }
 
   // Check staff requirement
-  if (requireStaff && !profile?.role) {
+  if (requireStaff && !profile?.role && !profile?.is_admin) {
     return fallback || (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
