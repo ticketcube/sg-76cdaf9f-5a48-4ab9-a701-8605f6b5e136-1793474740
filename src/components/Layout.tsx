@@ -24,7 +24,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
             OTW Radio
           </Link>
           <nav className="flex items-center gap-6">
-           
+            <Link href="/schedule" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Schedule
+            </Link>
+            {user && profile?.role && (
+              <Link href="/admin" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Admin
+              </Link>
+            )}
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
