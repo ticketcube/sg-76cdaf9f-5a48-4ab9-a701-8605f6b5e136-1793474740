@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, ArrowLeft, Radio, Calendar, Clock, ExternalLink, Settings, Save } from "lucide-react";
+import { Loader2, ArrowLeft, Radio, Calendar, Clock, ExternalLink, Settings, Save, Users } from "lucide-react";
 import Link from "next/link";
 
 interface DJ {
@@ -25,12 +25,29 @@ interface DJ {
   azuracast_notes: string | null;
 }
 
+interface LiveStatus {
+  is_live: boolean;
+  streamer_name: string | null;
+  dj_profile: {
+    user_id: string;
+    display_name: string;
+    username: string;
+  } | null;
+  listeners: number;
+  broadcast_start?: number;
+  now_playing?: {
+    title: string;
+    artist: string;
+  };
+}
+
 export default function DJsPage() {
   const [djs, setDjs] = useState<DJ[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingDJ, setEditingDJ] = useState<DJ | null>(null);
   const [saving, setSaving] = useState(false);
+  const [liveStatus, setLiveStatus] = useState<LiveStatus | null>(null);
   const [formData, setFormData] = useState({
     azuracast_streamer_username: "",
     azuracast_notes: ""
@@ -40,6 +57,11 @@ export default function DJsPage() {
 
   useEffect(() => {
     loadDJs();
+    loadLiveStatus();
+    
+    // Refresh live status every 30 seconds
+    const interval = setInterval(loadLiveStatus, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadDJs = async () => {
@@ -64,6 +86,18 @@ export default function DJsPage() {
       setDjs([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadLiveStatus = async () => {
+    try {
+      const response = await fetch("/api/admin/live-djs");
+      if (response.ok) {
+        const data = await response.json();
+        setLiveStatus(data);
+      }
+    } catch (err) {
+      console.error("Failed to load live status:", err);
     }
   };
 
@@ -106,6 +140,21 @@ export default function DJsPage() {
     }
   };
 
+  const isDJLive = (dj: DJ): boolean => {
+    return liveStatus?.is_live && 
+           liveStatus.dj_profile?.user_id === dj.user_id;
+  };
+
+  const formatBroadcastTime = (timestamp?: number): string => {
+    if (!timestamp) return "";
+    const start = new Date(timestamp * 1000);
+    const now = new Date();
+    const minutes = Math.floor((now.getTime() - start.getTime()) / 60000);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${minutes % 60}m`;
+  };
+
   return (
     <ProtectedRoute requireAdmin>
       <div className="page-container">
@@ -133,6 +182,59 @@ export default function DJsPage() {
               </div>
             </div>
           </div>
+
+          {liveStatus?.is_live && (
+            <Card className="mb-6 border-primary bg-primary/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <div className="relative">
+                    <Radio className="w-5 h-5 text-primary" />
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                    </span>
+                  </div>
+                  LIVE NOW
+                </CardTitle>
+                <CardDescription>
+                  {liveStatus.dj_profile ? (
+                    <span>
+                      <strong>{liveStatus.dj_profile.display_name}</strong> is streaming
+                    </span>
+                  ) : (
+                    <span>
+                      Streamer: <strong>{liveStatus.streamer_name}</strong> (not matched to DJ profile)
+                    </span>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-6 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-semibold">{liveStatus.listeners}</span>
+                    <span className="text-muted-foreground">listeners</span>
+                  </div>
+                  {liveStatus.broadcast_start && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">
+                        On air for {formatBroadcastTime(liveStatus.broadcast_start)}
+                      </span>
+                    </div>
+                  )}
+                  {liveStatus.now_playing && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span>🎵</span>
+                      <span>
+                        {liveStatus.now_playing.artist} - {liveStatus.now_playing.title}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {error && (
             <Alert variant="destructive" className="mb-6">
@@ -163,102 +265,124 @@ export default function DJsPage() {
                 </Card>
               ) : (
                 <div className="grid gap-4">
-                  {djs.map((dj) => (
-                    <Card key={dj.user_id} className="hover:border-primary/50 transition-colors">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-xl flex items-center gap-2">
-                              <Radio className="w-5 h-5 text-primary" />
-                              {dj.display_name || dj.username}
-                            </CardTitle>
-                            <CardDescription className="font-mono text-xs mt-1">
-                              {dj.email}
-                            </CardDescription>
-                          </div>
-                          <div className="flex gap-2">
-                            <Badge variant="default">DJ</Badge>
-                            {dj.is_admin && (
-                              <Badge variant="destructive">Admin</Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Calendar className="w-4 h-4" />
-                              <div>
-                                <div className="text-xs">Member Since</div>
-                                <div className="font-medium text-foreground">
-                                  {new Date(dj.created_at).toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric"
-                                  })}
+                  {djs.map((dj) => {
+                    const isLive = isDJLive(dj);
+                    
+                    return (
+                      <Card 
+                        key={dj.user_id} 
+                        className={`hover:border-primary/50 transition-colors ${
+                          isLive ? "border-primary bg-primary/5" : ""
+                        }`}
+                      >
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <CardTitle className="text-xl flex items-center gap-2">
+                                <div className="relative">
+                                  <Radio className="w-5 h-5 text-primary" />
+                                  {isLive && (
+                                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                                    </span>
+                                  )}
                                 </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Clock className="w-4 h-4" />
-                              <div>
-                                <div className="text-xs">AzuraCast Username</div>
-                                <div className="font-medium text-foreground font-mono">
-                                  {dj.azuracast_streamer_username || "Not set"}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Radio className="w-4 h-4" />
-                              <div>
-                                <div className="text-xs">Streaming Status</div>
-                                <div className="font-medium text-foreground">
-                                  <Badge 
-                                    variant={dj.azuracast_streamer_username ? "default" : "outline"} 
-                                    className="text-xs"
-                                  >
-                                    {dj.azuracast_streamer_username ? "Ready" : "Setup Required"}
+                                {dj.display_name || dj.username}
+                                {isLive && (
+                                  <Badge variant="default" className="ml-2">
+                                    LIVE
                                   </Badge>
+                                )}
+                              </CardTitle>
+                              <CardDescription className="font-mono text-xs mt-1">
+                                {dj.email}
+                              </CardDescription>
+                            </div>
+                            <div className="flex gap-2">
+                              <Badge variant="default">DJ</Badge>
+                              {dj.is_admin && (
+                                <Badge variant="destructive">Admin</Badge>
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Calendar className="w-4 h-4" />
+                                <div>
+                                  <div className="text-xs">Member Since</div>
+                                  <div className="font-medium text-foreground">
+                                    {new Date(dj.created_at).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric"
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Clock className="w-4 h-4" />
+                                <div>
+                                  <div className="text-xs">AzuraCast Username</div>
+                                  <div className="font-medium text-foreground font-mono">
+                                    {dj.azuracast_streamer_username || "Not set"}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Radio className="w-4 h-4" />
+                                <div>
+                                  <div className="text-xs">Streaming Status</div>
+                                  <div className="font-medium text-foreground">
+                                    <Badge 
+                                      variant={isLive ? "default" : dj.azuracast_streamer_username ? "outline" : "secondary"} 
+                                      className="text-xs"
+                                    >
+                                      {isLive ? "🔴 Live Now" : dj.azuracast_streamer_username ? "Ready" : "Setup Required"}
+                                    </Badge>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
 
-                          {dj.azuracast_notes && (
-                            <div className="p-3 bg-muted/50 rounded-md border border-border">
-                              <div className="text-xs text-muted-foreground mb-1">Admin Notes:</div>
-                              <div className="text-sm">{dj.azuracast_notes}</div>
-                            </div>
-                          )}
-
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openEditDialog(dj)}
-                            >
-                              <Settings className="w-4 h-4 mr-2" />
-                              Manage Credentials
-                            </Button>
-                            {dj.azuracast_streamer_username && (
-                              <Button
-                                variant="default"
-                                size="sm"
-                                asChild
-                              >
-                                <a href={WEB_DJ_URL} target="_blank" rel="noopener noreferrer">
-                                  <Radio className="w-4 h-4 mr-2" />
-                                  Open Web DJ
-                                  <ExternalLink className="w-3 h-3 ml-2" />
-                                </a>
-                              </Button>
+                            {dj.azuracast_notes && (
+                              <div className="p-3 bg-muted/50 rounded-md border border-border">
+                                <div className="text-xs text-muted-foreground mb-1">Admin Notes:</div>
+                                <div className="text-sm">{dj.azuracast_notes}</div>
+                              </div>
                             )}
+
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openEditDialog(dj)}
+                              >
+                                <Settings className="w-4 h-4 mr-2" />
+                                Manage Credentials
+                              </Button>
+                              {dj.azuracast_streamer_username && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  asChild
+                                >
+                                  <a href={WEB_DJ_URL} target="_blank" rel="noopener noreferrer">
+                                    <Radio className="w-4 h-4 mr-2" />
+                                    Open Web DJ
+                                    <ExternalLink className="w-3 h-3 ml-2" />
+                                  </a>
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </>
