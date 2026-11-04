@@ -38,9 +38,9 @@ async function fetchAzuraCastSchedule(): Promise<AzuraCastScheduleItem[]> {
 function parseAzuraCastTime(timeStr: string): { hours: number; minutes: number; time24: number } {
   try {
     const date = new Date(timeStr);
-    const etDate = new Date(date.toLocaleString("en-US", { timeZone: "America/New_York" }));
-    const hours = etDate.getHours();
-    const minutes = etDate.getMinutes();
+    const ptDate = new Date(date.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+    const hours = ptDate.getHours();
+    const minutes = ptDate.getMinutes();
     return { hours, minutes, time24: hours * 100 + minutes };
   } catch (error) {
     console.error(`Failed to parse time "${timeStr}":`, error);
@@ -61,7 +61,7 @@ function groupScheduleByDay(items: AzuraCastScheduleItem[]) {
 
   items.forEach(item => {
     const date = new Date(item.start);
-    const dayName = date.toLocaleDateString("en-US", { weekday: "long", timeZone: "America/New_York" });
+    const dayName = date.toLocaleDateString("en-US", { weekday: "long", timeZone: "America/Los_Angeles" });
     if (days[dayName]) {
       days[dayName].push(item);
     }
@@ -86,7 +86,7 @@ export default async function handler(
     const scheduleItems = await fetchAzuraCastSchedule();
     
     const now = new Date();
-    const today = now.toLocaleDateString("en-US", { weekday: "long", timeZone: "America/New_York" });
+    const today = now.toLocaleDateString("en-US", { weekday: "long", timeZone: "America/Los_Angeles" });
     
     const groupedSchedule = groupScheduleByDay(scheduleItems);
     
@@ -99,7 +99,7 @@ export default async function handler(
       })),
       week: groupedSchedule,
       current_day: today,
-      timezone: "America/New_York"
+      timezone: "America/Los_Angeles"
     };
 
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
