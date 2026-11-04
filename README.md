@@ -1,75 +1,272 @@
-# Your Softgen App# OTW Radio
+# OTW Radio Web Player
 
-24/7 internet radio for [Ones To Watch](https://onestowatch.live): the OTW Playlist rotation, daily weekly features, guest curator hours, artist interviews and occasional live shows, with video when the artist wants it.
+**Status:** Production-ready v1.0  
+**Live:** [radio.onestowatch.live](https://radio.onestowatch.live)  
+**Admin:** [radio.onestowatch.live/admin](https://radio.onestowatch.live/admin)
 
-Built on [AzuraCast](https://www.azuracast.com) (open source, self-hosted). Recorded shows live in **AIMC**, the OTW media lake, and air as scheduled premieres: pre-recorded, played at a fixed time, experienced as live.
+A 24/7 internet radio station with live DJ streaming, programming schedule, and admin management. Built for Ones To Watch to showcase their roster with real-time audio and video integration.
 
-## How it fits together
+---
 
-```
-AIMC media lake ──(sync)──> AzuraCast ──> audio stream (Icecast/HLS) ──> onestowatch.live player
-   │  recorded shows,          playout,                                  │  embeds on onestowatch.com
-   │  interviews, sessions     schedule,                                 │
-   │                           live DJ input                             │
-   └──── MP4 proxy (presigned, server-side) ─────────────────────────────> video in step with the audio
-```
+## 🎯 Core Features
 
-1. Producers list the AIMC assets for each day in `config/episodes/YYYY-MM-DD.json`.
-2. The **sync service** (`sync/`) fetches each asset from AIMC, extracts broadcast audio with ffmpeg, uploads it to AzuraCast, and builds a dated playlist scheduled into that block's slots from `config/schedule.json`.
-3. **AzuraCast** plays the OTW Playlist rotation around the clock and switches to the dated playlists at 10am, noon and 3pm.
-4. The **site** (built in Softgen, see `SOFTGEN_PROMPT.md`) plays the stream, shows now playing and the schedule, and when the current track has `has_video = 1` it plays the AIMC video proxy from the same point in the show.
+### Public Features
+- **Live Audio Player**: Persistent sticky player that continues across page navigation
+- **Programming Schedule**: 5 daily blocks + rotating weekly specials
+- **Now Playing**: Real-time track information from AzuraCast
+- **Responsive Design**: Mobile-first, dark-themed UI matching OTW brand
 
-## Programming
+### DJ Features  
+- **Web DJ Interface**: One-click access to streaming controls via AzuraCast
+- **Live Status**: Real-time detection when DJs go live
+- **Profile Management**: Display name, bio, social links
 
-| Time (ET) | Block |
-| --- | --- |
-| Midnight to 10am | OTW Playlist |
-| 10am to noon | OTW Weekly Feature (premiere) |
-| Noon to 3pm | Guest Curator Playlist |
-| 3pm to 5pm | OTW Weekly Feature (repeat) |
-| 5pm to midnight | OTW Playlist |
+### Admin Features
+- **DJ Management**: Create DJ accounts, set AzuraCast credentials, monitor live status
+- **User Management**: Create/manage admin and DJ users
+- **Playlist Management**: Visual playlist editor with AIMC sync
+- **Live Monitoring**: Dashboard showing current DJ, listener count, broadcast duration
 
-Weekly features: Monday OTW Weekly Recap, Tuesday Chef's Choice, Wednesday OTW Touring Artists, Thursday GWLMMWLG, Friday Artist Interview. Weekend features are proposals. Full detail in [docs/PROGRAMMING.md](docs/PROGRAMMING.md).
+---
 
-## Repository layout
+## 🏗️ Tech Stack
 
-| Path | What it is |
-| --- | --- |
-| `config/schedule.json` | The grid. Single source of truth for the sync service and the site |
-| `config/episodes/` | One file per air date listing the AIMC assets to premiere |
-| `sync/` | TypeScript service: AIMC to AzuraCast |
-| `docs/AZURACAST_SETUP.md` | Server, station, playlists, custom fields, embeds |
-| `docs/AIMC_INTEGRATION.md` | Data contract, premiere logic, video sync |
-| `docs/PROGRAMMING.md` | Grid and feature formats |
-| `SOFTGEN_PROMPT.md` | Paste-ready brief for building the site in Softgen |
+**Frontend:**
+- Next.js 15.2 (Page Router)
+- TypeScript
+- Tailwind CSS + shadcn/ui
+- React 18
 
-## Quick start
+**Backend:**
+- Supabase (Auth, Database, Storage)
+- AzuraCast (Streaming infrastructure)
+- Next.js API Routes (backend orchestration)
+
+**External Integrations:**
+- AzuraCast API (station management, live status, streamers)
+- AIMC API (optional playlist sync)
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- Supabase project
+- AzuraCast instance with station configured
+
+### Environment Setup
 
 ```bash
-# 1. Stand up AzuraCast on a server (see docs/AZURACAST_SETUP.md), create the station
-#    and an API key, then:
-cp .env.example .env    # fill in AZURACAST_* and AIMC_*
-
-# 2. Sync service (needs Node 20+ and ffmpeg)
-cd sync
+# Clone and install
 npm install
-set -a; source ../.env; set +a
-npm run sync -- setup --dry-run              # preview
-npm run sync -- setup                        # creates the OTW Playlist rotation
-npm run sync -- sync 2026-11-02 --dry-run    # preview a day
-npm run sync -- sync 2026-11-02              # load and schedule it
+
+# Configure environment (.env.local)
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+AZURACAST_API_KEY=your_azuracast_api_key
+NEXT_PUBLIC_AZURACAST_URL=https://radio.onestowatch.live
+
+# Run development server
+npm run dev
 ```
 
-Run `sync` for each air date a day or more ahead, by hand or from a nightly cron.
+### Initial Setup
 
-## Status
+1. **Database**: Supabase migrations in `supabase/migrations/` auto-create tables
+2. **Admin User**: Create first admin via Supabase SQL editor:
+   ```sql
+   INSERT INTO user_profiles (user_id, email, username, display_name, role, is_admin)
+   VALUES (
+     'your-auth-user-id',
+     'admin@example.com',
+     'admin',
+     'Admin User',
+     'admin',
+     true
+   );
+   ```
+3. **AzuraCast Station**: Configure station shortcode as `otw_radio`
 
-- [x] Grid and feature config
-- [x] Sync service: AzuraCast playlists, uploads, scheduling, custom fields (typechecked, dry-run tested)
-- [ ] AIMC REST routes in `sync/src/aimc.ts` are placeholders until the AIMC team confirms them
-- [ ] Site: build from `SOFTGEN_PROMPT.md`
-- [ ] Licensing: SoundExchange Notice of Use and PRO licenses before the first public stream
+---
 
-## License
+## 📁 Project Structure
 
-MIT for the code in this repository (change before publishing if Live Nation needs a different license). AzuraCast itself is Apache 2.0. Media in AIMC is not part of this repository and is not open source.
+```
+src/
+├── pages/
+│   ├── index.tsx              # Homepage with audio player
+│   ├── schedule.tsx           # Full schedule view
+│   ├── auth/login.tsx         # Authentication
+│   ├── admin/
+│   │   ├── index.tsx          # Admin dashboard
+│   │   ├── djs.tsx            # DJ management (Phase 2 complete)
+│   │   ├── users.tsx          # User management
+│   │   └── playlists.tsx      # Playlist editor
+│   └── api/
+│       ├── schedule.ts        # Schedule data
+│       ├── now-playing.ts     # Live status
+│       └── admin/
+│           └── live-djs.ts    # DJ status + AzuraCast integration
+├── components/
+│   ├── AudioPlayer.tsx        # Persistent audio player
+│   ├── Schedule.tsx           # Schedule grid component
+│   └── ui/                    # shadcn/ui components
+├── integrations/
+│   └── supabase/              # Supabase client + types
+└── styles/
+    └── globals.css            # Dark theme + design system
+
+config/
+└── schedule.json              # Programming schedule definition
+
+otw-radio/sync/                # AIMC sync service (optional)
+```
+
+---
+
+## 🎨 Design System
+
+**Permanent Dark Theme:**
+- Background: `#0A0A0A` (near-black)
+- Foreground: `#FAFAFA` (clean white)
+- Primary: `#ED1D42` (crimson red for "LIVE")
+- Accent: `#1F1F1F` (dark grey)
+
+**Typography:**
+- Display: Sora (headings)
+- Body: IBM Plex Sans
+- Mono: IBM Plex Mono (data/time)
+
+**Key Classes:**
+- `.live-indicator` - Pulsing "LIVE" badge
+- `.status-live::before` - Red dot indicator
+- `.glow-primary` - Crimson glow effect
+
+---
+
+## 🔐 Authentication & Authorization
+
+**Roles:**
+- `admin`: Full access to admin panel, user/DJ/playlist management
+- `otwl-dj`: Access to Web DJ interface, profile management
+- (Future: `listener`, `verified-listener` for chat/requests)
+
+**Row-Level Security (RLS):**
+All tables have RLS enabled. Key policies:
+- `user_profiles`: Users read own data, admins read/write all
+- Admin endpoints require `is_admin = true`
+- DJ endpoints require `role = 'otwl-dj'`
+
+---
+
+## 📡 AzuraCast Integration
+
+**Station Details:**
+- Station ID: `2`
+- Shortcode: `otw_radio`
+- Web DJ URL: `https://radio.onestowatch.live/public/otw_radio/dj`
+
+**API Endpoints Used:**
+- `GET /api/nowplaying/otw_radio` - Live status, track info (public)
+- `GET /api/station/otw_radio/streamers` - All DJ accounts (requires API key)
+- `POST /api/station/otw_radio/playlists` - Playlist management (requires API key)
+
+**DJ Workflow:**
+1. Admin creates streamer account in AzuraCast Admin Panel
+2. Admin sets `azuracast_streamer_username` in `/admin/djs`
+3. Admin shares credentials securely with DJ
+4. DJ clicks "Open Web DJ" button to stream
+5. System auto-detects when DJ goes live (matches `streamer_name` to profile)
+
+**Live Status Detection:**
+- Polls `/api/nowplaying` every 30 seconds
+- Matches `live.streamer_name` to `user_profiles.azuracast_streamer_username`
+- Shows listener count, broadcast duration, current track
+- Alerts if unmatched streamer is live
+
+---
+
+## 🔧 Key Configuration Files
+
+### Schedule Definition (`config/schedule.json`)
+```json
+{
+  "blocks": [
+    {
+      "id": "morning",
+      "name": "Morning Mix",
+      "time": "6:00 AM - 10:00 AM",
+      "description": "...",
+      "playlist": "morning_mix"
+    }
+  ]
+}
+```
+
+### Environment Variables
+```bash
+# Required
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY        # For admin operations
+AZURACAST_API_KEY                # For DJ/playlist management
+NEXT_PUBLIC_AZURACAST_URL
+
+# Optional
+AIMC_API_KEY                     # For playlist sync
+AIMC_PARTNER_ID
+```
+
+---
+
+## 🚧 Development Roadmap
+
+**✅ Phase 1 Complete:** Static schedule, audio player, admin panel  
+**✅ Phase 2 Complete:** DJ management, AzuraCast integration, live status  
+**🔄 Phase 3 In Progress:** AIMC playlist sync automation  
+**📋 Phase 4 Planned:** Listener features (chat, requests, favorites)
+
+See `docs/SCALING_ROADMAP.md` and `public/DJ_MANAGEMENT_ROADMAP.md` for detailed plans.
+
+---
+
+## 📚 Documentation
+
+- `docs/AZURACAST_SETUP.md` - AzuraCast configuration guide
+- `docs/PROGRAMMING.md` - Schedule structure and playlist logic
+- `docs/SCALING_ROADMAP.md` - Full feature roadmap
+- `docs/LINODE_DEPLOYMENT.md` - Self-hosted deployment guide
+- `public/DJ_MANAGEMENT_ROADMAP.md` - DJ system phases
+
+---
+
+## 🐛 Known Issues
+
+**Database:**
+- `duplicate key value violates unique constraint "user_profiles_user_id_key"` - Use UPSERT instead of INSERT when creating profiles, or check if profile exists first
+
+**Preview:**
+- If audio player shows "Internal Server Error", restart Next.js dev server
+- Refresh preview iframe if stuck on white screen
+
+---
+
+## 📝 License
+
+MIT License - see LICENSE file
+
+---
+
+## 🤖 AI Agent Context
+
+For AI assistants working on this project, see `.softgen/project.md` for design system details and `docs/AI_AGENT_GUIDE.md` for architecture overview and common patterns.
+
+**Key Principles:**
+- Dark theme only (no light mode toggle)
+- AzuraCast is the source of truth for streaming/DJ status
+- Supabase handles auth, database, and files
+- Use `azuracast_streamer_username` for DJ matching (not email, not display name)
+- RLS policies protect all tables
+- Prefer server-side API key usage over client-side
