@@ -25,7 +25,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Link>
           <nav className="flex items-center gap-6">
            
-            )}
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
