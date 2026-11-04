@@ -56,10 +56,10 @@ async function downloadFile(url: string, outputPath: string): Promise<void> {
   }
 
   const fileStream = createWriteStream(outputPath);
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     response.body!.pipe(fileStream);
     response.body!.on("error", reject);
-    fileStream.on("finish", resolve);
+    fileStream.on("finish", () => resolve());
   });
 }
 

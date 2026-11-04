@@ -77,7 +77,7 @@ function getStatusIcon(status: string) {
 }
 
 export default function ExtractAudioPage() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [asset, setAsset] = useState<Asset | null>(null);
@@ -89,12 +89,11 @@ export default function ExtractAudioPage() {
   const [loadingJobs, setLoadingJobs] = useState(true);
 
   const loadJobs = async () => {
-    if (!user) return;
+    if (!user || !session) return;
     
     try {
-      const token = (await user.getSession())?.access_token;
       const res = await fetch("/api/extraction/jobs", {
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: { "Authorization": `Bearer ${session.access_token}` }
       });
       
       if (res.ok) {
@@ -112,7 +111,7 @@ export default function ExtractAudioPage() {
     loadJobs();
     const interval = setInterval(loadJobs, 5000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, session]);
 
   const lookupAsset = async () => {
     const uuid = extractUUID(input);
@@ -170,13 +169,17 @@ export default function ExtractAudioPage() {
       return;
     }
 
+    if (!session) {
+      toast.error("Not authenticated");
+      return;
+    }
+
     try {
-      const token = (await user?.getSession())?.access_token;
       const res = await fetch("/api/extraction/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Authorization": `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           assetId: asset.id,
