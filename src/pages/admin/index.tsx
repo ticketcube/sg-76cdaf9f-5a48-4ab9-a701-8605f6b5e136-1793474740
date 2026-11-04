@@ -36,13 +36,13 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <Radio className="w-8 h-8 mb-2 text-primary" />
-                <CardTitle>Now Playing</CardTitle>
+                <CardTitle>Playlists</CardTitle>
                 <CardDescription>
-                  View current broadcast and listener stats
+                  View current playlists
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Link href="/admin/now-playing">
+                <Link href="/admin/playlists">
                   <Button className="w-full">View Details</Button>
                 </Link>
               </CardContent>
@@ -52,13 +52,13 @@ export default function AdminDashboard() {
               <Card>
                 <CardHeader>
                   <Mic className="w-8 h-8 mb-2 text-primary" />
-                  <CardTitle>Host Dashboard</CardTitle>
+                  <CardTitle>Media</CardTitle>
                   <CardDescription>
                     Manage your shows and schedule
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link href="/admin/host">
+                  <Link href="/admin/media">
                     <Button className="w-full">Go to Dashboard</Button>
                   </Link>
                 </CardContent>
@@ -70,32 +70,19 @@ export default function AdminDashboard() {
                 <Card>
                   <CardHeader>
                     <Users className="w-8 h-8 mb-2 text-primary" />
-                    <CardTitle>User Management</CardTitle>
+                    <CardTitle>DJ Management</CardTitle>
                     <CardDescription>
                       Manage staff, DJs, and roles
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Link href="/admin/users">
+                    <Link href="/admin/djs">
                       <Button className="w-full">Manage Users</Button>
                     </Link>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <Settings className="w-8 h-8 mb-2 text-primary" />
-                    <CardTitle>Settings</CardTitle>
-                    <CardDescription>
-                      Configure station and system settings
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Link href="/admin/settings">
-                      <Button className="w-full">Configure</Button>
-                    </Link>
-                  </CardContent>
-                </Card>
+                
               </>
             )}
           </div>
