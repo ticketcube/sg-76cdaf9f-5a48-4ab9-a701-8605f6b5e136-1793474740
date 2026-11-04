@@ -1,0 +1,21 @@
+{
+  "name": "otw-radio-extraction-worker",
+  "version": "1.0.0",
+  "description": "Worker service for extracting audio from AIMC videos",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "ssh2-sftp-client": "^10.0.3",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/ssh2-sftp-client": "^9.0.3",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
+  }
+}

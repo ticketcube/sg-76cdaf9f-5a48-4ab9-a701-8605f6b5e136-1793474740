@@ -1,0 +1,10 @@
+node_modules/
+src/
+*.log
+.env
+sftp_key
+README.md
+docker-compose.yml
+.gitignore
+.dockerignore
+tsconfig.json

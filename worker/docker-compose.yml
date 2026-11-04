@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  worker:
+    build: .
+    container_name: otw-radio-worker
+    restart: unless-stopped
+    environment:
+      - APP_URL=${APP_URL}
+      - WORKER_TOKEN=${WORKER_TOKEN}
+      - SFTP_HOST=${SFTP_HOST:-localhost}
+      - SFTP_PORT=${SFTP_PORT:-2022}
+      - SFTP_USER=${SFTP_USER}
+      - SFTP_PRIVATE_KEY_PATH=/run/secrets/sftp_key
+      - RADIO_FOLDER=${RADIO_FOLDER:-aimc}
+      - NODE_ENV=production
+    volumes:
+      - /tmp/extraction:/tmp/extraction
+    secrets:
+      - sftp_key
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+secrets:
+  sftp_key:
+    file: ./sftp_key
