@@ -9,7 +9,7 @@ export default function SchedulePage() {
             Programming Schedule
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            All times Eastern Time (ET). Broadcasting 24/7 with rotating features and curated playlists.
+            All times Pacific Time (PT). Broadcasting 24/7 with rotating features and curated playlists.
           </p>
         </header>
 

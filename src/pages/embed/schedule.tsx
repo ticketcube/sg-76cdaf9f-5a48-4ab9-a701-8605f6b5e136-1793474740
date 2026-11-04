@@ -53,7 +53,7 @@ export function ScheduleCard() {
                     <Radio className="h-4 w-4 text-primary" />
                     <span className="font-semibold text-foreground text-sm">Today's Schedule</span>
                 </div>
-                <span className="text-muted text-xs font-mono">All times ET</span>
+                <span className="text-muted text-xs font-mono">All times PT</span>
             </div>
 
             {loadError && !schedule ? (
