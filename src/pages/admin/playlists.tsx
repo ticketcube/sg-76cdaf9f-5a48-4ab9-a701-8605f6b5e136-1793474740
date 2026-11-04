@@ -213,12 +213,7 @@ export default function PlaylistManagementPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Link href="/admin/playlist-editor">
-                <Button variant="outline">
-                  <Edit className="w-4 h-4 mr-2" />
-                  Schedule Editor
-                </Button>
-              </Link>
+             
               <a
                 href={`${process.env.NEXT_PUBLIC_AZURACAST_URL}/station/${process.env.NEXT_PUBLIC_STATION_SHORTCODE}/playlists`}
                 target="_blank"
