@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Radio } from "lucide-react";
 
 interface ScheduleItem {
@@ -81,6 +81,18 @@ export function ScheduleCard() {
     const [loadError, setLoadError] = useState(false);
     const [tab, setTab] = useState < Tab > ("today");
 
+    // Animate the list height when switching tabs or when data arrives,
+    // so the card opens/closes downward smoothly.
+    const innerRef = useRef < HTMLDivElement > (null);
+    const [height, setHeight] = useState < number | undefined > (undefined);
+    useEffect(() => {
+        const el = innerRef.current;
+        if (!el || typeof ResizeObserver === "undefined") return;
+        const ro = new ResizeObserver(() => setHeight(el.offsetHeight));
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+
     useEffect(() => {
         const load = async () => {
             try {
@@ -124,47 +136,51 @@ export function ScheduleCard() {
                 </button>
             </div>
 
-            {loadError && !schedule ? (
-                <div className="text-muted text-xs">Schedule unavailable. Retrying...</div>
-            ) : !schedule ? (
-                <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-4 bg-muted rounded animate-pulse" />
-                    ))}
-                </div>
-            ) : tab === "today" ? (
-                schedule.today.length === 0 ? (
-                    <div className="text-muted text-xs">No schedule for today.</div>
-                ) : (
-                    <ul className="space-y-1">
-                        {schedule.today.map((item, i) => (
-                            <ScheduleRow key={i} item={item} />
-                        ))}
-                    </ul>
-                )
-            ) : !weekHasItems ? (
-                <div className="text-muted text-xs">Nothing scheduled this week yet.</div>
-            ) : (
-                <div className="space-y-4">
-                    {week.map(({ day, items }, idx) =>
-                        items.length === 0 ? null : (
-                            <div key={day}>
-                                <div className="flex items-center gap-2 px-2 mb-1">
-                                    <span className={`font-mono text-[11px] uppercase tracking-wide ${idx === 0 ? "text-primary" : "text-muted"}`}>
-                                        {idx === 0 ? "Today" : day}
-                                    </span>
-                                    <span className="h-px flex-1 bg-muted/30" />
-                                </div>
-                                <ul className="space-y-1">
-                                    {items.map((item, i) => (
-                                        <ScheduleRow key={i} item={item} showNow={idx === 0} />
-                                    ))}
-                                </ul>
-                            </div>
+            <div style={{ height }} className="overflow-hidden transition-[height] duration-300 ease-out">
+                <div ref={innerRef}>
+                    {loadError && !schedule ? (
+                        <div className="text-muted text-xs">Schedule unavailable. Retrying...</div>
+                    ) : !schedule ? (
+                        <div className="space-y-3">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="h-4 bg-muted rounded animate-pulse" />
+                            ))}
+                        </div>
+                    ) : tab === "today" ? (
+                        schedule.today.length === 0 ? (
+                            <div className="text-muted text-xs">No schedule for today.</div>
+                        ) : (
+                            <ul className="space-y-1">
+                                {schedule.today.map((item, i) => (
+                                    <ScheduleRow key={i} item={item} />
+                                ))}
+                            </ul>
                         )
+                    ) : !weekHasItems ? (
+                        <div className="text-muted text-xs">Nothing scheduled this week yet.</div>
+                    ) : (
+                        <div className="space-y-4">
+                            {week.map(({ day, items }, idx) =>
+                                items.length === 0 ? null : (
+                                    <div key={day}>
+                                        <div className="flex items-center gap-2 px-2 mb-1">
+                                            <span className={`font-mono text-[11px] uppercase tracking-wide ${idx === 0 ? "text-primary" : "text-muted"}`}>
+                                                {idx === 0 ? "Today" : day}
+                                            </span>
+                                            <span className="h-px flex-1 bg-muted/30" />
+                                        </div>
+                                        <ul className="space-y-1">
+                                            {items.map((item, i) => (
+                                                <ScheduleRow key={i} item={item} showNow={idx === 0} />
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )
+                            )}
+                        </div>
                     )}
                 </div>
-            )}
+            </div>
         </div>
     );
 }
