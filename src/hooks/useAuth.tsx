@@ -24,16 +24,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    authService.getCurrentSession().then(setSession);
-    authService.getCurrentUser().then(async (user) => {
-      setUser(user);
-      if (user) {
-        const profile = await authService.getUserProfile(user.id);
-        setProfile(profile);
+    // Get initial session and user with error handling
+    const initializeAuth = async () => {
+      try {
+        const session = await authService.getCurrentSession();
+        setSession(session);
+        
+        const user = await authService.getCurrentUser();
+        setUser(user);
+        
+        if (user) {
+          try {
+            const profile = await authService.getUserProfile(user.id);
+            setProfile(profile);
+          } catch (profileError) {
+            console.error("Failed to load user profile:", profileError);
+            setProfile(null);
+          }
+        }
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = authService.onAuthStateChange(
@@ -48,12 +67,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } : null);
 
         if (user) {
-          const profile = await authService.getUserProfile(user.id);
-          setProfile(profile);
+          try {
+            const profile = await authService.getUserProfile(user.id);
+            setProfile(profile);
+          } catch (error) {
+            console.error("Failed to load profile on auth change:", error);
+            setProfile(null);
+          }
         } else {
           setProfile(null);
         }
-        setLoading(false);
       }
     );
 
