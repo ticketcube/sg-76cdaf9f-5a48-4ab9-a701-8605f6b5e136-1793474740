@@ -73,6 +73,9 @@ export const azuracast = {
     return { ...existing, ...input };
   },
 
+  /** Lists all media files in the station library. */
+  listFiles: () => call<StationMedia[]>("GET", `${station()}/files`),
+
   /** Uploads a file into the station media library at the given relative path. */
   uploadFile: (relativePath: string, contents: Buffer) =>
     call<StationMedia>("POST", `${station()}/files`, {
