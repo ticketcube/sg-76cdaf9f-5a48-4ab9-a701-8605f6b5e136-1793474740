@@ -40,17 +40,26 @@ export default function EmbedPlayer() {
         if (typeof window !== "undefined" && !audioRef.current) {
             audioRef.current = new Audio();
             audioRef.current.volume = volume / 100;
+            audioRef.current.preload = "none";
         }
+        
+        return () => {
+            // Cleanup on unmount
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.src = "";
+            }
+        };
     }, []);
 
-    // Update volume
+    // Update volume whenever it changes
     useEffect(() => {
-        if (audioRef.current) {
+        if (audioRef.current && !isMuted) {
             audioRef.current.volume = volume / 100;
         }
-    }, [volume]);
+    }, [volume, isMuted]);
 
-    // Update mute
+    // Update mute state
     useEffect(() => {
         if (audioRef.current) {
             audioRef.current.muted = isMuted;
