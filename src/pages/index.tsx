@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { useRouter } from "next/router";
 import { ScheduleCard } from "@/pages/embed/schedule";
 interface NowPlaying {
     now_playing: {
@@ -17,7 +18,22 @@ interface NowPlaying {
     };
 }
 
+// Only allow https images/links in the banner query params.
+function safeUrl(value: string | string[] | undefined): string | null {
+    if (typeof value !== "string") return null;
+    try {
+        const u = new URL(value);
+        return u.protocol === "https:" ? u.toString() : null;
+    } catch {
+        return null;
+    }
+}
+
 export default function EmbedPlayer() {
+    const router = useRouter();
+    // Optional banner: /?banner=https://.../ad.jpg&link=https://...
+    const bannerSrc = safeUrl(router.query.banner);
+    const bannerLink = safeUrl(router.query.link);
     const [nowPlaying, setNowPlaying] = useState < NowPlaying | null > (null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -86,6 +102,21 @@ export default function EmbedPlayer() {
         return () => clearInterval(interval);
     }, []);
 
+    // When embedded in an iframe, tell the host page our height so the iframe
+    // grows/shrinks with the schedule instead of scrolling or clipping.
+    useEffect(() => {
+        if (typeof window === "undefined" || window.parent === window) return;
+        const send = () =>
+            window.parent.postMessage(
+                { type: "otw-widget-height", height: Math.ceil(document.documentElement.scrollHeight) },
+                "*"
+            );
+        const ro = new ResizeObserver(send);
+        ro.observe(document.body);
+        send();
+        return () => ro.disconnect();
+    }, []);
+
     const togglePlay = async () => {
         if (!audioRef.current) return;
 
@@ -107,8 +138,21 @@ export default function EmbedPlayer() {
     const song = nowPlaying?.now_playing.song;
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-background p-4">
-            <div className="w-full max-w-md">
+        // Top-aligned (not vertically centered) so the player never moves
+        // when the schedule below opens or closes.
+        <div className="bg-background p-4">
+            <div className="w-full max-w-md mx-auto">
+                {bannerSrc && (
+                    <div className="mb-3 overflow-hidden rounded-lg">
+                        {bannerLink ? (
+                            <a href={bannerLink} target="_blank" rel="noopener noreferrer sponsored">
+                                <img src={bannerSrc} alt="Sponsor" className="block w-full h-auto" />
+                            </a>
+                        ) : (
+                            <img src={bannerSrc} alt="" className="block w-full h-auto" />
+                        )}
+                    </div>
+                )}
                 <div className="flex items-center gap-4 bg-accent rounded-lg p-4">
                     {/* Album art or placeholder */}
                     <div className="w-16 h-16 rounded bg-muted flex-shrink-0 overflow-hidden">
