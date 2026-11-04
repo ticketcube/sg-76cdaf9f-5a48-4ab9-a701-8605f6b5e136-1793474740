@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         is_active: streamer.is_active,
         user_id: profile?.user_id,
         email: profile?.email,
-        profile_display_name: profile?.display_name
+        profile_display_name: profile?.display_name || undefined
       };
     });
 
