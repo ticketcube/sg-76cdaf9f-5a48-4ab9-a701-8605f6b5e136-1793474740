@@ -106,7 +106,7 @@ export default function UsersManagement() {
               </Link>
               <h1 className="text-4xl font-bold">User Management</h1>
               <p className="text-muted-foreground mt-2">
-                Create and manage OTW Radio staff, DJs, and podcast creators
+                Manage admins and OTW Radio users (DJs, staff, podcast creators)
               </p>
             </div>
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>

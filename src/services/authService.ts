@@ -282,6 +282,7 @@ export const authService = {
       const { data, error } = await supabase
         .from("user_profiles")
         .select("*")
+        .or("is_admin.eq.true,role.not.is.null")
         .order("created_at", { ascending: false });
 
       if (error) {
