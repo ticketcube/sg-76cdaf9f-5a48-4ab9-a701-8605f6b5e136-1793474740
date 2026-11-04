@@ -46,11 +46,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     );
 
+    console.log("Streamers API URL:", `${AZURACAST_BASE_URL}/api/station/${STATION_SHORTCODE}/streamers`);
+    console.log("Streamers API status:", streamersResponse.status);
+
     if (!streamersResponse.ok) {
-      throw new Error(`AzuraCast streamers API error: ${streamersResponse.status}`);
+      const errorText = await streamersResponse.text();
+      console.error("AzuraCast streamers API error:", errorText);
+      throw new Error(`AzuraCast streamers API error: ${streamersResponse.status} - ${errorText}`);
     }
 
     const azuracastStreamers: AzuraCastStreamer[] = await streamersResponse.json();
+    console.log("Fetched streamers count:", azuracastStreamers.length);
+    console.log("Streamers data:", JSON.stringify(azuracastStreamers, null, 2));
 
     // Fetch all user profiles from database to enrich streamer data
     const { data: allProfiles } = await supabase
