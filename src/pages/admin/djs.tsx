@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, ArrowLeft, Radio, Calendar, Clock, ExternalLink, Settings, Save, Users } from "lucide-react";
+import { Loader2, ArrowLeft, Radio, Calendar, Clock, ExternalLink, Settings, Save, Users, CheckCircle, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
 interface DJ {
@@ -25,20 +25,44 @@ interface DJ {
   azuracast_notes: string | null;
 }
 
-interface LiveStatus {
+interface DJStatus {
+  user_id: string;
+  display_name: string;
+  username: string;
+  email: string;
+  azuracast_streamer_username: string;
+  azuracast_display_name?: string;
+  is_active_in_azuracast: boolean;
+  has_azuracast_account: boolean;
   is_live: boolean;
-  streamer_name: string | null;
-  dj_profile: {
-    user_id: string;
-    display_name: string;
-    username: string;
-  } | null;
-  listeners: number;
+  listeners?: number;
   broadcast_start?: number;
   now_playing?: {
     title: string;
     artist: string;
   };
+  schedule_items?: Array<{
+    start_time: number;
+    end_time: number;
+    days?: number[];
+  }>;
+}
+
+interface LiveDJsResponse {
+  djs: DJStatus[];
+  total_djs: number;
+  djs_with_azuracast_accounts: number;
+  active_in_azuracast: number;
+  live_count: number;
+  unmatched_live_streamer?: {
+    streamer_name: string;
+    listeners: number;
+    broadcast_start: number;
+    now_playing: {
+      title: string;
+      artist: string;
+    };
+  } | null;
 }
 
 export default function DJsPage() {
@@ -47,7 +71,7 @@ export default function DJsPage() {
   const [error, setError] = useState("");
   const [editingDJ, setEditingDJ] = useState<DJ | null>(null);
   const [saving, setSaving] = useState(false);
-  const [liveStatus, setLiveStatus] = useState<LiveStatus | null>(null);
+  const [djStatuses, setDjStatuses] = useState<LiveDJsResponse | null>(null);
   const [formData, setFormData] = useState({
     azuracast_streamer_username: "",
     azuracast_notes: ""
@@ -57,10 +81,10 @@ export default function DJsPage() {
 
   useEffect(() => {
     loadDJs();
-    loadLiveStatus();
+    loadDJStatuses();
     
-    // Refresh live status every 30 seconds
-    const interval = setInterval(loadLiveStatus, 30000);
+    // Refresh DJ statuses every 30 seconds
+    const interval = setInterval(loadDJStatuses, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -89,15 +113,15 @@ export default function DJsPage() {
     }
   };
 
-  const loadLiveStatus = async () => {
+  const loadDJStatuses = async () => {
     try {
       const response = await fetch("/api/admin/live-djs");
       if (response.ok) {
         const data = await response.json();
-        setLiveStatus(data);
+        setDjStatuses(data);
       }
     } catch (err) {
-      console.error("Failed to load live status:", err);
+      console.error("Failed to load DJ statuses:", err);
     }
   };
 
@@ -131,6 +155,7 @@ export default function DJsPage() {
         setError(updateError.message);
       } else {
         await loadDJs();
+        await loadDJStatuses();
         closeEditDialog();
       }
     } catch (err) {
@@ -140,9 +165,8 @@ export default function DJsPage() {
     }
   };
 
-  const isDJLive = (dj: DJ): boolean => {
-    return liveStatus?.is_live && 
-           liveStatus.dj_profile?.user_id === dj.user_id;
+  const getDJStatus = (dj: DJ): DJStatus | undefined => {
+    return djStatuses?.djs.find(status => status.user_id === dj.user_id);
   };
 
   const formatBroadcastTime = (timestamp?: number): string => {
@@ -154,6 +178,8 @@ export default function DJsPage() {
     const hours = Math.floor(minutes / 60);
     return `${hours}h ${minutes % 60}m`;
   };
+
+  const liveDJ = djStatuses?.djs.find(dj => dj.is_live);
 
   return (
     <ProtectedRoute requireAdmin>
@@ -176,14 +202,20 @@ export default function DJsPage() {
                   Manage DJ streaming access and credentials
                 </p>
               </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-primary">{djs.length}</div>
-                <div className="text-sm text-muted-foreground">Total DJs</div>
+              <div className="grid grid-cols-2 gap-4 text-right">
+                <div>
+                  <div className="text-3xl font-bold text-primary">{djStatuses?.total_djs || 0}</div>
+                  <div className="text-sm text-muted-foreground">Total DJs</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-green-500">{djStatuses?.djs_with_azuracast_accounts || 0}</div>
+                  <div className="text-sm text-muted-foreground">With Accounts</div>
+                </div>
               </div>
             </div>
           </div>
 
-          {liveStatus?.is_live && (
+          {liveDJ && (
             <Card className="mb-6 border-primary bg-primary/5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -197,43 +229,45 @@ export default function DJsPage() {
                   LIVE NOW
                 </CardTitle>
                 <CardDescription>
-                  {liveStatus.dj_profile ? (
-                    <span>
-                      <strong>{liveStatus.dj_profile.display_name}</strong> is streaming
-                    </span>
-                  ) : (
-                    <span>
-                      Streamer: <strong>{liveStatus.streamer_name}</strong> (not matched to DJ profile)
-                    </span>
-                  )}
+                  <strong>{liveDJ.display_name}</strong> is streaming
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-6 text-sm">
+                <div className="flex items-center gap-6 text-sm flex-wrap">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-semibold">{liveStatus.listeners}</span>
+                    <span className="font-semibold">{liveDJ.listeners}</span>
                     <span className="text-muted-foreground">listeners</span>
                   </div>
-                  {liveStatus.broadcast_start && (
+                  {liveDJ.broadcast_start && (
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">
-                        On air for {formatBroadcastTime(liveStatus.broadcast_start)}
+                        On air for {formatBroadcastTime(liveDJ.broadcast_start)}
                       </span>
                     </div>
                   )}
-                  {liveStatus.now_playing && (
+                  {liveDJ.now_playing && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <span>🎵</span>
                       <span>
-                        {liveStatus.now_playing.artist} - {liveStatus.now_playing.title}
+                        {liveDJ.now_playing.artist} - {liveDJ.now_playing.title}
                       </span>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {djStatuses?.unmatched_live_streamer && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Unmatched Live Streamer:</strong> {djStatuses.unmatched_live_streamer.streamer_name} is currently streaming but not linked to any DJ profile. 
+                Check the AzuraCast username in "Manage Credentials" to match them.
+              </AlertDescription>
+            </Alert>
           )}
 
           {error && (
@@ -266,7 +300,8 @@ export default function DJsPage() {
               ) : (
                 <div className="grid gap-4">
                   {djs.map((dj) => {
-                    const isLive = isDJLive(dj);
+                    const status = getDJStatus(dj);
+                    const isLive = status?.is_live || false;
                     
                     return (
                       <Card 
@@ -327,7 +362,7 @@ export default function DJsPage() {
                                 <Clock className="w-4 h-4" />
                                 <div>
                                   <div className="text-xs">AzuraCast Username</div>
-                                  <div className="font-medium text-foreground font-mono">
+                                  <div className="font-medium text-foreground font-mono text-xs">
                                     {dj.azuracast_streamer_username || "Not set"}
                                   </div>
                                 </div>
@@ -335,18 +370,36 @@ export default function DJsPage() {
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <Radio className="w-4 h-4" />
                                 <div>
-                                  <div className="text-xs">Streaming Status</div>
+                                  <div className="text-xs">Status</div>
                                   <div className="font-medium text-foreground">
                                     <Badge 
-                                      variant={isLive ? "default" : dj.azuracast_streamer_username ? "outline" : "secondary"} 
+                                      variant={isLive ? "default" : status?.has_azuracast_account ? "outline" : "secondary"} 
                                       className="text-xs"
                                     >
-                                      {isLive ? "🔴 Live Now" : dj.azuracast_streamer_username ? "Ready" : "Setup Required"}
+                                      {isLive ? "🔴 Live Now" : 
+                                       status?.has_azuracast_account ? 
+                                         status.is_active_in_azuracast ? "✓ Ready" : "⚠️ Inactive" : 
+                                       "⚠️ Setup Required"}
                                     </Badge>
                                   </div>
                                 </div>
                               </div>
                             </div>
+
+                            {status?.has_azuracast_account && !status.is_active_in_azuracast && (
+                              <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription className="text-xs">
+                                  This DJ account exists in AzuraCast but is marked as inactive. Activate it in AzuraCast Admin to enable streaming.
+                                </AlertDescription>
+                              </Alert>
+                            )}
+
+                            {status?.azuracast_display_name && (
+                              <div className="text-xs text-muted-foreground">
+                                <strong>AzuraCast Display Name:</strong> {status.azuracast_display_name}
+                              </div>
+                            )}
 
                             {dj.azuracast_notes && (
                               <div className="p-3 bg-muted/50 rounded-md border border-border">
@@ -403,10 +456,11 @@ export default function DJsPage() {
                   className="text-primary hover:underline"
                 >
                   AzuraCast Admin Panel
-                </a>
+                </a>{" "}
+                (Settings → Users & Accounts → Add Streamer)
               </p>
               <p>
-                <strong>Step 2:</strong> Set the AzuraCast username here via "Manage Credentials"
+                <strong>Step 2:</strong> Set the exact AzuraCast username here via "Manage Credentials"
               </p>
               <p>
                 <strong>Step 3:</strong> Share login credentials securely with DJ
@@ -435,10 +489,11 @@ export default function DJsPage() {
                 id="azuracast_username"
                 value={formData.azuracast_streamer_username}
                 onChange={(e) => setFormData({ ...formData, azuracast_streamer_username: e.target.value })}
-                placeholder="Enter AzuraCast username"
+                placeholder="Enter exact AzuraCast username"
+                className="font-mono"
               />
               <p className="text-xs text-muted-foreground">
-                The username created in AzuraCast Admin → Users & Accounts
+                Must match exactly the username in AzuraCast Admin → Settings → Users & Accounts
               </p>
             </div>
 
@@ -454,9 +509,11 @@ export default function DJsPage() {
             </div>
 
             <Alert>
+              <CheckCircle className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                <strong>Security Note:</strong> Password is managed in AzuraCast Admin Panel only. 
-                Share credentials with DJ securely (encrypted email, password manager, etc.)
+                <strong>Password Management:</strong> Passwords are set in AzuraCast Admin Panel only. 
+                Share credentials securely (encrypted email, password manager, etc.). 
+                This system tracks username mapping for live status detection.
               </AlertDescription>
             </Alert>
           </div>
