@@ -32,7 +32,13 @@ export default function LoginPage() {
     }
 
     if (user) {
-      router.push("/");
+      // Check if user is admin/staff and redirect accordingly
+      const profile = await authService.getUserProfile(user.id);
+      if (profile?.is_admin || profile?.role) {
+        router.push("/admin");
+      } else {
+        router.push("/schedule");
+      }
     }
   };
 
