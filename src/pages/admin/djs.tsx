@@ -66,12 +66,11 @@ interface LiveDJsResponse {
 }
 
 export default function DJsPage() {
-  const [djs, setDjs] = useState<DJ[]>([]);
+  const [djStatuses, setDjStatuses] = useState<LiveDJsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [editingDJ, setEditingDJ] = useState<DJ | null>(null);
+  const [editingDJ, setEditingDJ] = useState<DJStatus | null>(null);
   const [saving, setSaving] = useState(false);
-  const [djStatuses, setDjStatuses] = useState<LiveDJsResponse | null>(null);
   const [formData, setFormData] = useState({
     azuracast_streamer_username: "",
     azuracast_notes: ""
@@ -80,7 +79,6 @@ export default function DJsPage() {
   const WEB_DJ_URL = "https://radio.onestowatch.live/public/otw_radio/dj";
 
   useEffect(() => {
-    loadDJs();
     loadDJStatuses();
     
     // Refresh DJ statuses every 30 seconds
@@ -88,48 +86,29 @@ export default function DJsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const loadDJs = async () => {
+  const loadDJStatuses = async () => {
     setLoading(true);
     setError("");
-    
-    try {
-      const { data, error: fetchError } = await supabase
-        .from("user_profiles")
-        .select("*")
-        .eq("role", "otwl-dj")
-        .order("display_name", { ascending: true });
-
-      if (fetchError) {
-        setError(fetchError.message);
-        setDjs([]);
-      } else {
-        setDjs(data || []);
-      }
-    } catch (err) {
-      setError("Failed to load DJs");
-      setDjs([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadDJStatuses = async () => {
     try {
       const response = await fetch("/api/admin/live-djs");
       if (response.ok) {
         const data = await response.json();
         setDjStatuses(data);
+      } else {
+        setError("Failed to load DJ statuses from AzuraCast");
       }
     } catch (err) {
-      console.error("Failed to load DJ statuses:", err);
+      setError("Failed to connect to AzuraCast API");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const openEditDialog = (dj: DJ) => {
+  const openEditDialog = (dj: DJStatus) => {
     setEditingDJ(dj);
     setFormData({
       azuracast_streamer_username: dj.azuracast_streamer_username || "",
-      azuracast_notes: dj.azuracast_notes || ""
+      azuracast_notes: ""
     });
   };
 
@@ -143,20 +122,24 @@ export default function DJsPage() {
     
     setSaving(true);
     try {
-      const { error: updateError } = await supabase
-        .from("user_profiles")
-        .update({
-          azuracast_streamer_username: formData.azuracast_streamer_username || null,
-          azuracast_notes: formData.azuracast_notes || null
-        })
-        .eq("user_id", editingDJ.user_id);
+      // Only update if user_id exists (linked to our database)
+      if (editingDJ.user_id) {
+        const { error: updateError } = await supabase
+          .from("user_profiles")
+          .update({
+            azuracast_streamer_username: formData.azuracast_streamer_username || null,
+            azuracast_notes: formData.azuracast_notes || null
+          })
+          .eq("user_id", editingDJ.user_id);
 
-      if (updateError) {
-        setError(updateError.message);
+        if (updateError) {
+          setError(updateError.message);
+        } else {
+          await loadDJStatuses();
+          closeEditDialog();
+        }
       } else {
-        await loadDJs();
-        await loadDJStatuses();
-        closeEditDialog();
+        setError("This streamer is not linked to a user profile. Add them via User Management first.");
       }
     } catch (err) {
       setError("Failed to save credentials");
@@ -282,30 +265,33 @@ export default function DJsPage() {
             </div>
           ) : (
             <>
-              {djs.length === 0 ? (
+              {!djStatuses?.djs || djStatuses.djs.length === 0 ? (
                 <Card>
                   <CardContent className="py-12">
                     <div className="text-center">
                       <Radio className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                       <p className="text-muted-foreground">
-                        No DJs found. Create DJ users from the{" "}
-                        <Link href="/admin/users" className="text-primary hover:underline">
-                          User Management
-                        </Link>{" "}
-                        page.
+                        No streamers found in AzuraCast. Add streamers in{" "}
+                        <a 
+                          href="https://radio.onestowatch.live/admin" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          AzuraCast Admin Panel
+                        </a>
                       </p>
                     </div>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="grid gap-4">
-                  {djs.map((dj) => {
-                    const status = getDJStatus(dj);
-                    const isLive = status?.is_live || false;
+                  {djStatuses.djs.map((dj) => {
+                    const isLive = dj.is_live || false;
                     
                     return (
                       <Card 
-                        key={dj.user_id} 
+                        key={dj.azuracast_streamer_username} 
                         className={`hover:border-primary/50 transition-colors ${
                           isLive ? "border-primary bg-primary/5" : ""
                         }`}
@@ -323,7 +309,7 @@ export default function DJsPage() {
                                     </span>
                                   )}
                                 </div>
-                                {dj.display_name || dj.username}
+                                {dj.display_name}
                                 {isLive && (
                                   <Badge variant="default" className="ml-2">
                                     LIVE
@@ -331,14 +317,13 @@ export default function DJsPage() {
                                 )}
                               </CardTitle>
                               <CardDescription className="font-mono text-xs mt-1">
-                                {dj.email}
+                                {dj.email || dj.azuracast_streamer_username}
                               </CardDescription>
                             </div>
                             <div className="flex gap-2">
-                              <Badge variant="default">DJ</Badge>
-                              {dj.is_admin && (
-                                <Badge variant="destructive">Admin</Badge>
-                              )}
+                              <Badge variant={dj.user_id ? "default" : "secondary"}>
+                                {dj.user_id ? "Linked" : "AzuraCast Only"}
+                              </Badge>
                             </div>
                           </div>
                         </CardHeader>
@@ -346,24 +331,20 @@ export default function DJsPage() {
                           <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                               <div className="flex items-center gap-2 text-muted-foreground">
-                                <Calendar className="w-4 h-4" />
+                                <Radio className="w-4 h-4" />
                                 <div>
-                                  <div className="text-xs">Member Since</div>
-                                  <div className="font-medium text-foreground">
-                                    {new Date(dj.created_at).toLocaleDateString("en-US", {
-                                      month: "short",
-                                      day: "numeric",
-                                      year: "numeric"
-                                    })}
+                                  <div className="text-xs">AzuraCast Username</div>
+                                  <div className="font-medium text-foreground font-mono text-xs">
+                                    {dj.azuracast_streamer_username}
                                   </div>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <Clock className="w-4 h-4" />
                                 <div>
-                                  <div className="text-xs">AzuraCast Username</div>
-                                  <div className="font-medium text-foreground font-mono text-xs">
-                                    {dj.azuracast_streamer_username || "Not set"}
+                                  <div className="text-xs">AzuraCast Display Name</div>
+                                  <div className="font-medium text-foreground text-xs">
+                                    {dj.azuracast_display_name || "Not set"}
                                   </div>
                                 </div>
                               </div>
@@ -373,63 +354,57 @@ export default function DJsPage() {
                                   <div className="text-xs">Status</div>
                                   <div className="font-medium text-foreground">
                                     <Badge 
-                                      variant={isLive ? "default" : status?.has_azuracast_account ? "outline" : "secondary"} 
+                                      variant={isLive ? "default" : dj.is_active_in_azuracast ? "outline" : "secondary"} 
                                       className="text-xs"
                                     >
                                       {isLive ? "🔴 Live Now" : 
-                                       status?.has_azuracast_account ? 
-                                         status.is_active_in_azuracast ? "✓ Ready" : "⚠️ Inactive" : 
-                                       "⚠️ Setup Required"}
+                                       dj.is_active_in_azuracast ? "✓ Active" : "⚠️ Inactive"}
                                     </Badge>
                                   </div>
                                 </div>
                               </div>
                             </div>
 
-                            {status?.has_azuracast_account && !status.is_active_in_azuracast && (
+                            {dj.has_azuracast_account && !dj.is_active_in_azuracast && (
                               <Alert>
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertDescription className="text-xs">
-                                  This DJ account exists in AzuraCast but is marked as inactive. Activate it in AzuraCast Admin to enable streaming.
+                                  This streamer account is marked as inactive in AzuraCast. Activate it in AzuraCast Admin to enable streaming.
                                 </AlertDescription>
                               </Alert>
                             )}
 
-                            {status?.azuracast_display_name && (
-                              <div className="text-xs text-muted-foreground">
-                                <strong>AzuraCast Display Name:</strong> {status.azuracast_display_name}
-                              </div>
-                            )}
-
-                            {dj.azuracast_notes && (
-                              <div className="p-3 bg-muted/50 rounded-md border border-border">
-                                <div className="text-xs text-muted-foreground mb-1">Admin Notes:</div>
-                                <div className="text-sm">{dj.azuracast_notes}</div>
-                              </div>
+                            {!dj.user_id && (
+                              <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription className="text-xs">
+                                  This streamer exists in AzuraCast but is not linked to a user profile. To manage them, create a user with matching AzuraCast username.
+                                </AlertDescription>
+                              </Alert>
                             )}
 
                             <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openEditDialog(dj)}
-                              >
-                                <Settings className="w-4 h-4 mr-2" />
-                                Manage Credentials
-                              </Button>
-                              {dj.azuracast_streamer_username && (
+                              {dj.user_id && (
                                 <Button
-                                  variant="default"
+                                  variant="outline"
                                   size="sm"
-                                  asChild
+                                  onClick={() => openEditDialog(dj)}
                                 >
-                                  <a href={WEB_DJ_URL} target="_blank" rel="noopener noreferrer">
-                                    <Radio className="w-4 h-4 mr-2" />
-                                    Open Web DJ
-                                    <ExternalLink className="w-3 h-3 ml-2" />
-                                  </a>
+                                  <Settings className="w-4 h-4 mr-2" />
+                                  Manage Credentials
                                 </Button>
                               )}
+                              <Button
+                                variant="default"
+                                size="sm"
+                                asChild
+                              >
+                                <a href={WEB_DJ_URL} target="_blank" rel="noopener noreferrer">
+                                  <Radio className="w-4 h-4 mr-2" />
+                                  Open Web DJ
+                                  <ExternalLink className="w-3 h-3 ml-2" />
+                                </a>
+                              </Button>
                             </div>
                           </div>
                         </CardContent>
