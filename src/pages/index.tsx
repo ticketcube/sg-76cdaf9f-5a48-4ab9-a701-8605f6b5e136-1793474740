@@ -2,13 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import dynamic from "next/dynamic";
-
-// Lazy-load the schedule component for faster initial page load
-const ScheduleCard = dynamic(
-  () => import("@/pages/embed/schedule").then(mod => ({ default: mod.ScheduleCard })),
-  { ssr: false }
-);
+import { ScheduleCard } from "@/pages/embed/schedule";
 interface NowPlaying {
     now_playing: {
         song: {
@@ -16,10 +10,6 @@ interface NowPlaying {
             artist: string;
             art?: string;
         };
-    };
-    live?: {
-        is_live: boolean;
-        streamer_name?: string;
     };
     station: {
         name: string;
@@ -40,26 +30,17 @@ export default function EmbedPlayer() {
         if (typeof window !== "undefined" && !audioRef.current) {
             audioRef.current = new Audio();
             audioRef.current.volume = volume / 100;
-            audioRef.current.preload = "none";
         }
-        
-        return () => {
-            // Cleanup on unmount
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current.src = "";
-            }
-        };
     }, []);
 
-    // Update volume whenever it changes
+    // Update volume
     useEffect(() => {
-        if (audioRef.current && !isMuted) {
+        if (audioRef.current) {
             audioRef.current.volume = volume / 100;
         }
-    }, [volume, isMuted]);
+    }, [volume]);
 
-    // Update mute state
+    // Update mute
     useEffect(() => {
         if (audioRef.current) {
             audioRef.current.muted = isMuted;
@@ -124,8 +105,6 @@ export default function EmbedPlayer() {
     const toggleMute = () => setIsMuted(!isMuted);
 
     const song = nowPlaying?.now_playing.song;
-    const isLive = nowPlaying?.live?.is_live ?? false;
-    const streamerName = nowPlaying?.live?.streamer_name;
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-background p-4">
@@ -159,27 +138,12 @@ export default function EmbedPlayer() {
                             </>
                         ) : song ? (
                             <>
-                                {isLive && streamerName ? (
-                                    <div className="flex flex-col gap-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="bg-primary text-primary-foreground font-mono text-[10px] px-2 py-0.5 rounded">
-                                                LIVE
-                                            </span>
-                                        </div>
-                                        <div className="font-semibold text-foreground text-sm">
-                                            {streamerName}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="font-semibold text-foreground truncate text-sm">
-                                            {song.title || "Unknown Track"}
-                                        </div>
-                                        <div className="text-muted text-xs truncate">
-                                            {song.artist || "Unknown Artist"}
-                                        </div>
-                                    </>
-                                )}
+                                <div className="font-semibold text-foreground truncate text-sm">
+                                    {song.title || "Unknown Track"}
+                                </div>
+                                <div className="text-muted text-xs truncate">
+                                    {song.artist || "Unknown Artist"}
+                                </div>
                             </>
                         ) : (
                             <>
