@@ -214,16 +214,7 @@ export default function PlaylistManagementPage() {
             </div>
             <div className="flex gap-2">
              
-              <a
-                href={`${process.env.NEXT_PUBLIC_AZURACAST_URL}/station/${process.env.NEXT_PUBLIC_STATION_SHORTCODE}/playlists`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button>
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Manage in AzuraCast
-                </Button>
-              </a>
+             
             </div>
           </div>
 
