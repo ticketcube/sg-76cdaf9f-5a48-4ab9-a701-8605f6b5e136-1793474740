@@ -14,6 +14,7 @@ export default function Document() {
           async 
           data-softgen-monitoring="true"
         />
+        <link rel="icon" type="image/png" href="/favicon.png" />
       </Head>
       <body className="antialiased">
         <Main />
