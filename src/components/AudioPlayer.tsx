@@ -67,6 +67,19 @@ export function AudioPlayer() {
     return () => clearInterval(interval);
   }, [mounted]);
 
+  // Cleanup audio element on unmount to prevent memory leaks
+  useEffect(() => {
+    const audio = audioRef.current;
+    
+    return () => {
+      if (audio) {
+        audio.pause();
+        audio.src = "";
+        audio.load();
+      }
+    };
+  }, []);
+
   const togglePlay = () => {
     if (!audioRef.current) return;
 
