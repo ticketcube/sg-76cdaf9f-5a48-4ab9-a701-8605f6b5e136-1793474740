@@ -10,6 +10,16 @@ interface AzuraCastStreamer {
   streamer_username: string;
   display_name: string;
   is_active: boolean;
+  enforce_schedule?: boolean;
+  schedule_items?: ScheduleItem[];
+}
+
+interface ScheduleItem {
+  start_time: number;
+  end_time: number;
+  days: number[];
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 interface Streamer {
@@ -17,6 +27,8 @@ interface Streamer {
   streamer_username: string;
   display_name: string;
   is_active: boolean;
+  enforce_schedule?: boolean;
+  schedule_items?: ScheduleItem[];
   user_id?: string;
   email?: string;
   profile_display_name?: string;
@@ -76,6 +88,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         streamer_username: streamer.streamer_username,
         display_name: streamer.display_name,
         is_active: streamer.is_active,
+        enforce_schedule: streamer.enforce_schedule,
+        schedule_items: streamer.schedule_items || [],
         user_id: profile?.user_id,
         email: profile?.email,
         profile_display_name: profile?.display_name || undefined

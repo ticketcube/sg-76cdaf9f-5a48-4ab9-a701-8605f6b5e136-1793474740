@@ -2,24 +2,33 @@
 
 import { useState, useEffect } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, ArrowLeft, Radio, ExternalLink, Settings, Save, CheckCircle, AlertCircle, Key, User } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, ArrowLeft, Radio, Edit, Save, Plus, Trash2, X, Calendar, Clock } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+
+interface ScheduleItem {
+  start_time: number;
+  end_time: number;
+  days: number[];
+  start_date?: string | null;
+  end_date?: string | null;
+}
 
 interface Streamer {
   id: number;
   streamer_username: string;
   display_name: string;
   is_active: boolean;
+  enforce_schedule?: boolean;
+  schedule_items?: ScheduleItem[];
   user_id?: string;
   email?: string;
   profile_display_name?: string;
@@ -32,19 +41,39 @@ interface StreamersResponse {
   linked_count: number;
 }
 
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function formatTime(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  const period = hours >= 12 ? "pm" : "am";
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${mins.toString().padStart(2, "0")}${period}`;
+}
+
+function intToTime(int: number): string {
+  const hours = Math.floor(int / 60);
+  const minutes = int % 60;
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+}
+
+function timeToInt(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
 export default function DJsPage() {
   const [streamers, setStreamers] = useState<StreamersResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingStreamer, setEditingStreamer] = useState<Streamer | null>(null);
+  const [editingSchedules, setEditingSchedules] = useState<ScheduleItem[]>([]);
+  const [enforceSchedule, setEnforceSchedule] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    display_name: "",
-    notes: ""
-  });
   const { toast } = useToast();
 
-  const WEB_DJ_URL = "https://radio.onestowatch.live/public/otw_radio/dj";
-  const AZURACAST_ADMIN = "https://radio.onestowatch.live/admin";
+  const AZURACAST_BASE_URL = process.env.NEXT_PUBLIC_AZURACAST_URL || "https://radio.onestowatch.live";
+  const AZURACAST_API_KEY = process.env.AZURACAST_API_KEY;
+  const STATION_ID = process.env.AZURACAST_STATION_ID || "2";
 
   useEffect(() => {
     loadStreamers();
@@ -60,14 +89,14 @@ export default function DJsPage() {
       } else {
         toast({
           title: "Error",
-          description: "Failed to load streamers from AzuraCast",
+          description: "Failed to load streamers",
           variant: "destructive"
         });
       }
     } catch (err) {
       toast({
         title: "Error",
-        description: "Failed to connect to AzuraCast API",
+        description: "Failed to connect to API",
         variant: "destructive"
       });
     } finally {
@@ -75,62 +104,125 @@ export default function DJsPage() {
     }
   };
 
-  const openEditDialog = (streamer: Streamer) => {
+  const openScheduleEditor = (streamer: Streamer) => {
     setEditingStreamer(streamer);
-    setFormData({
-      display_name: streamer.profile_display_name || streamer.display_name,
-      notes: ""
-    });
+    setEditingSchedules(streamer.schedule_items || []);
+    setEnforceSchedule(streamer.enforce_schedule || false);
   };
 
-  const closeEditDialog = () => {
+  const closeScheduleEditor = () => {
     setEditingStreamer(null);
-    setFormData({ display_name: "", notes: "" });
+    setEditingSchedules([]);
+    setEnforceSchedule(false);
   };
 
-  const saveCredentials = async () => {
-    if (!editingStreamer?.user_id) {
-      toast({
-        title: "Error",
-        description: "This streamer is not linked to a user profile",
-        variant: "destructive"
-      });
-      return;
+  const addSchedule = () => {
+    setEditingSchedules([
+      ...editingSchedules,
+      {
+        start_time: 0,
+        end_time: 1439,
+        days: [1],
+        start_date: null,
+        end_date: null
+      }
+    ]);
+  };
+
+  const updateSchedule = (index: number, updates: Partial<ScheduleItem>) => {
+    const updated = [...editingSchedules];
+    updated[index] = { ...updated[index], ...updates };
+    setEditingSchedules(updated);
+  };
+
+  const deleteSchedule = (index: number) => {
+    setEditingSchedules(editingSchedules.filter((_, i) => i !== index));
+  };
+
+  const toggleDay = (scheduleIndex: number, dayIndex: number) => {
+    const updated = [...editingSchedules];
+    const schedule = updated[scheduleIndex];
+    const dayNum = dayIndex + 1;
+    
+    if (schedule.days.includes(dayNum)) {
+      schedule.days = schedule.days.filter(d => d !== dayNum);
+    } else {
+      schedule.days = [...schedule.days, dayNum].sort();
     }
+    
+    setEditingSchedules(updated);
+  };
+
+  const saveSchedule = async () => {
+    if (!editingStreamer) return;
     
     setSaving(true);
     try {
-      const { error: updateError } = await supabase
-        .from("user_profiles")
-        .update({
-          display_name: formData.display_name || null,
-          azuracast_notes: formData.notes || null
-        })
-        .eq("user_id", editingStreamer.user_id);
+      const response = await fetch(
+        `${AZURACAST_BASE_URL}/api/station/${STATION_ID}/streamer/${editingStreamer.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": AZURACAST_API_KEY || ""
+          },
+          body: JSON.stringify({
+            enforce_schedule: enforceSchedule,
+            schedule_items: editingSchedules.map(s => ({
+              start_time: s.start_time,
+              end_time: s.end_time,
+              days: s.days,
+              start_date: s.start_date,
+              end_date: s.end_date
+            }))
+          })
+        }
+      );
 
-      if (updateError) {
-        toast({
-          title: "Error",
-          description: updateError.message,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: "Streamer profile updated"
-        });
-        await loadStreamers();
-        closeEditDialog();
+      if (!response.ok) {
+        throw new Error("Failed to update schedule");
       }
-    } catch (err) {
+
+      toast({
+        title: "Success",
+        description: "Schedule updated successfully"
+      });
+
+      closeScheduleEditor();
+      await loadStreamers();
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to save changes",
+        description: error.message,
         variant: "destructive"
       });
     } finally {
       setSaving(false);
     }
+  };
+
+  const renderSchedule = (schedules?: ScheduleItem[]) => {
+    if (!schedules || schedules.length === 0) {
+      return <span className="text-xs text-muted-foreground">No schedule set</span>;
+    }
+
+    return (
+      <div className="space-y-1">
+        {schedules.map((slot, idx) => (
+          <div key={idx} className="text-xs">
+            <span className="font-mono">{formatTime(slot.start_time)}-{formatTime(slot.end_time)}</span>
+            {" • "}
+            {slot.days.length === 7 ? (
+              <span className="text-muted-foreground">Every day</span>
+            ) : (
+              <span className="text-muted-foreground">
+                {slot.days.map(d => DAYS[d - 1]).join(", ")}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -148,10 +240,10 @@ export default function DJsPage() {
               <div>
                 <h1 className="text-4xl font-bold flex items-center gap-3">
                   <Radio className="w-10 h-10 text-primary" />
-                  Streamer Accounts
+                  DJ Streamers
                 </h1>
                 <p className="text-muted-foreground mt-2">
-                  Manage DJ streaming credentials and access
+                  Manage DJ credentials and schedules
                 </p>
               </div>
               <div className="grid grid-cols-3 gap-4 text-right">
@@ -176,210 +268,163 @@ export default function DJsPage() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : (
-            <>
-              {!streamers?.streamers || streamers.streamers.length === 0 ? (
-                <Card>
-                  <CardContent className="py-12">
-                    <div className="text-center space-y-4">
-                      <Radio className="w-12 h-12 mx-auto text-muted-foreground" />
-                      <div>
-                        <p className="text-muted-foreground mb-2">
-                          No streamers found in AzuraCast
-                        </p>
-                        <Button variant="outline" asChild>
-                          <a href={AZURACAST_ADMIN} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-4 h-4 mr-2" />
-                            Add Streamers in AzuraCast
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid gap-4">
-                  {streamers.streamers.map((streamer) => (
-                    <Card key={streamer.id} className="hover:border-primary/50 transition-colors">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-xl flex items-center gap-2">
-                              <User className="w-5 h-5 text-primary" />
-                              {streamer.profile_display_name || streamer.display_name}
-                              <Badge variant={streamer.is_active ? "default" : "secondary"} className="ml-2">
-                                {streamer.is_active ? "Active" : "Inactive"}
-                              </Badge>
-                            </CardTitle>
-                            <CardDescription className="font-mono text-xs mt-1">
-                              {streamer.email || `@${streamer.streamer_username}`}
-                            </CardDescription>
-                          </div>
-                          <Badge variant={streamer.user_id ? "outline" : "secondary"}>
-                            {streamer.user_id ? "Linked to Profile" : "AzuraCast Only"}
+            <Card>
+              <CardHeader>
+                <CardTitle>Streamer Accounts & Schedules</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Display Name</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Schedule</TableHead>
+                      <TableHead>Enforce Times</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {streamers?.streamers.map((streamer) => (
+                      <TableRow key={streamer.id}>
+                        <TableCell className="font-mono text-sm">{streamer.streamer_username}</TableCell>
+                        <TableCell>{streamer.profile_display_name || streamer.display_name}</TableCell>
+                        <TableCell>
+                          <Badge variant={streamer.is_active ? "default" : "secondary"}>
+                            {streamer.is_active ? "Active" : "Inactive"}
                           </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
-                            <div>
-                              <div className="text-xs text-muted-foreground mb-1">AzuraCast Username</div>
-                              <div className="font-mono font-semibold text-sm">{streamer.streamer_username}</div>
+                        </TableCell>
+                        <TableCell>
+                          {renderSchedule(streamer.schedule_items)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={streamer.enforce_schedule ? "default" : "outline"} className="text-xs">
+                            {streamer.enforce_schedule ? "Enforced" : "Anytime"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openScheduleEditor(streamer)}
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit Schedule
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      <Dialog open={!!editingStreamer} onOpenChange={closeScheduleEditor}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Edit Schedule - {editingStreamer?.display_name}</DialogTitle>
+            <DialogDescription>
+              Configure when this streamer can broadcast
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-0.5">
+                <Label className="text-base">Enforce Schedule Times</Label>
+                <p className="text-sm text-muted-foreground">
+                  Restrict streaming to scheduled time slots only
+                </p>
+              </div>
+              <Switch
+                checked={enforceSchedule}
+                onCheckedChange={setEnforceSchedule}
+              />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-base">Time Slots</Label>
+                <Button variant="outline" size="sm" onClick={addSchedule}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Slot
+                </Button>
+              </div>
+
+              {editingSchedules.length === 0 ? (
+                <div className="text-center py-8 border rounded-lg border-dashed">
+                  <Calendar className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    No schedule slots. Streamer can broadcast anytime.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {editingSchedules.map((slot, idx) => (
+                    <Card key={idx} className="bg-muted/30">
+                      <CardContent className="pt-4 space-y-4">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label className="text-xs">Start Time</Label>
+                                <Input
+                                  type="time"
+                                  value={intToTime(slot.start_time)}
+                                  onChange={(e) => updateSchedule(idx, { start_time: timeToInt(e.target.value) })}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">End Time</Label>
+                                <Input
+                                  type="time"
+                                  value={intToTime(slot.end_time)}
+                                  onChange={(e) => updateSchedule(idx, { end_time: timeToInt(e.target.value) })}
+                                />
+                              </div>
                             </div>
                             <div>
-                              <div className="text-xs text-muted-foreground mb-1">Display Name</div>
-                              <div className="font-semibold text-sm">{streamer.display_name}</div>
+                              <Label className="text-xs mb-2 block">Active Days</Label>
+                              <div className="flex flex-wrap gap-2">
+                                {DAYS.map((day, dayIdx) => (
+                                  <Button
+                                    key={dayIdx}
+                                    variant={slot.days.includes(dayIdx + 1) ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => toggleDay(idx, dayIdx)}
+                                  >
+                                    {day}
+                                  </Button>
+                                ))}
+                              </div>
                             </div>
                           </div>
-
-                          {!streamer.is_active && (
-                            <Alert>
-                              <AlertCircle className="h-4 w-4" />
-                              <AlertDescription className="text-xs">
-                                This account is inactive. Enable in{" "}
-                                <a href={AZURACAST_ADMIN} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                  AzuraCast Admin
-                                </a>{" "}
-                                to allow streaming.
-                              </AlertDescription>
-                            </Alert>
-                          )}
-
-                          {!streamer.user_id && (
-                            <Alert>
-                              <AlertCircle className="h-4 w-4" />
-                              <AlertDescription className="text-xs">
-                                Not linked to a user profile. Create a user in{" "}
-                                <Link href="/admin/users" className="text-primary hover:underline">
-                                  User Management
-                                </Link>{" "}
-                                and set their AzuraCast username to <code className="font-mono bg-muted px-1 rounded">{streamer.streamer_username}</code>
-                              </AlertDescription>
-                            </Alert>
-                          )}
-
-                          <div className="flex gap-2">
-                            {streamer.user_id && (
-                              <Button variant="outline" size="sm" onClick={() => openEditDialog(streamer)}>
-                                <Settings className="w-4 h-4 mr-2" />
-                                Edit Profile
-                              </Button>
-                            )}
-                            <Button variant="default" size="sm" asChild>
-                              <a href={WEB_DJ_URL} target="_blank" rel="noopener noreferrer">
-                                <Radio className="w-4 h-4 mr-2" />
-                                Web DJ Login
-                                <ExternalLink className="w-3 h-3 ml-2" />
-                              </a>
-                            </Button>
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={`${AZURACAST_ADMIN}#/station/otw_radio/streamers`} target="_blank" rel="noopener noreferrer">
-                                <Key className="w-4 h-4 mr-2" />
-                                Manage in AzuraCast
-                                <ExternalLink className="w-3 h-3 ml-2" />
-                              </a>
-                            </Button>
-                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteSchedule(idx)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
               )}
-            </>
-          )}
-
-          <div className="mt-8 p-6 bg-muted/50 rounded-lg border border-border">
-            <h3 className="font-semibold mb-4 flex items-center gap-2 text-lg">
-              <Key className="w-5 h-5 text-primary" />
-              Streamer Account Setup
-            </h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex gap-3">
-                <span className="font-semibold text-primary shrink-0">Step 1:</span>
-                <div>
-                  Create streamer account in{" "}
-                  <a href={AZURACAST_ADMIN} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                    AzuraCast Admin
-                  </a>{" "}
-                  (Settings → Streamers/DJs → Add Streamer)
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <span className="font-semibold text-primary shrink-0">Step 2:</span>
-                <div>
-                  Set username and password in AzuraCast (passwords are managed there only)
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <span className="font-semibold text-primary shrink-0">Step 3:</span>
-                <div>
-                  Create matching user profile in{" "}
-                  <Link href="/admin/users" className="text-primary hover:underline">
-                    User Management
-                  </Link>{" "}
-                  and set their AzuraCast username to match
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <span className="font-semibold text-primary shrink-0">Step 4:</span>
-                <div>
-                  Share credentials securely with the DJ (encrypted messaging, password manager)
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <Dialog open={!!editingStreamer} onOpenChange={closeEditDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Streamer Profile</DialogTitle>
-            <DialogDescription>
-              Update display name and notes for {editingStreamer?.streamer_username}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <Alert>
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription className="text-xs">
-                <strong>Username & Password:</strong> Managed in{" "}
-                <a href={AZURACAST_ADMIN} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                  AzuraCast Admin
-                </a>{" "}
-                only. This updates profile display info.
-              </AlertDescription>
-            </Alert>
-
-            <div className="space-y-2">
-              <Label htmlFor="display_name">Display Name</Label>
-              <Input
-                id="display_name"
-                value={formData.display_name}
-                onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-                placeholder="Friendly name for this DJ"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Admin Notes</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Schedule preferences, contact info, special instructions..."
-                rows={3}
-              />
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeEditDialog} disabled={saving}>
+            <Button variant="outline" onClick={closeScheduleEditor} disabled={saving}>
+              <X className="w-4 h-4 mr-2" />
               Cancel
             </Button>
-            <Button onClick={saveCredentials} disabled={saving}>
+            <Button onClick={saveSchedule} disabled={saving}>
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -388,7 +433,7 @@ export default function DJsPage() {
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Save Changes
+                  Save Schedule
                 </>
               )}
             </Button>
