@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const AZURACAST_BASE_URL = process.env.NEXT_PUBLIC_AZURACAST_URL || "https://radio.onestowatch.live";
 const AZURACAST_API_KEY = process.env.AZURACAST_API_KEY;
-const STATION_SHORTCODE = "otw_radio";
+const STATION_ID = process.env.AZURACAST_STATION_ID || "2";
 
 interface AzuraCastStreamer {
   id: number;
@@ -40,13 +40,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Fetch all streamers from AzuraCast
     const streamersResponse = await fetch(
-      `${AZURACAST_BASE_URL}/api/station/${STATION_SHORTCODE}/streamers`,
+      `${AZURACAST_BASE_URL}/api/station/${STATION_ID}/streamers`,
       {
         headers: { "X-API-Key": AZURACAST_API_KEY }
       }
     );
 
-    console.log("Streamers API URL:", `${AZURACAST_BASE_URL}/api/station/${STATION_SHORTCODE}/streamers`);
+    console.log("Streamers API URL:", `${AZURACAST_BASE_URL}/api/station/${STATION_ID}/streamers`);
     console.log("Streamers API status:", streamersResponse.status);
 
     if (!streamersResponse.ok) {
