@@ -136,7 +136,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         is_live: isLive,
         ...(isLive && {
           listeners: nowPlaying.listeners.current,
-          broadcast_start: nowPlaying.live.broadcast_start,
+          broadcast_start: nowPlaying.live.broadcast_start ?? undefined,
           now_playing: {
             title: nowPlaying.now_playing.song.title,
             artist: nowPlaying.now_playing.song.artist
