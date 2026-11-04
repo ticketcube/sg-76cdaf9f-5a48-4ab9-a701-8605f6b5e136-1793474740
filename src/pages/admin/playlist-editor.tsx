@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, Plus, Trash2, ExternalLink, Copy } from "lucide-react";
+import { Download, Plus, Trash2, ExternalLink, Copy, Upload, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Schedule {
@@ -77,6 +77,7 @@ function intToTime(int: number): string {
 export default function PlaylistEditor() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [showJson, setShowJson] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const addPlaylist = () => {
     const newPlaylist: Playlist = {
@@ -214,6 +215,60 @@ export default function PlaylistEditor() {
     toast.success("JSON copied to clipboard");
   };
 
+  const syncToAzuraCast = async () => {
+    if (playlists.length === 0) {
+      toast.error("No playlists to sync");
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      // Transform to API-compatible format
+      const playlistsToSync = playlists.map(p => ({
+        name: p.name,
+        type: p.config.type,
+        source: p.config.source,
+        order: p.config.order,
+        weight: p.config.weight,
+        is_enabled: p.config.is_enabled,
+        is_jingle: p.config.is_jingle,
+        avoid_duplicates: p.config.avoid_duplicates,
+        include_in_requests: p.config.include_in_requests,
+        include_in_on_demand: p.config.include_in_on_demand,
+        schedule_items: p.schedules.map(s => ({
+          start_time: s.start_time,
+          end_time: s.end_time,
+          days: s.days,
+          start_date: s.start_date,
+          end_date: s.end_date,
+          loop_once: s.loop_once
+        }))
+      }));
+
+      const res = await fetch("/api/playlists/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playlists: playlistsToSync })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to sync");
+      }
+
+      const result = await res.json();
+      toast.success(result.message || "Playlists synced successfully", {
+        description: result.results.map((r: any) => 
+          `${r.action === "created" ? "Created" : "Updated"}: ${r.name}`
+        ).join("\n")
+      });
+    } catch (error: any) {
+      toast.error("Sync failed", { description: error.message });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <ProtectedRoute requireAdmin>
       <div className="container mx-auto py-8 px-4 max-w-7xl">
@@ -221,7 +276,7 @@ export default function PlaylistEditor() {
           <div>
             <h1 className="text-3xl font-bold mb-2">Playlist Schedule Editor</h1>
             <p className="text-muted-foreground">
-              Create and edit playlist schedules, then import into AzuraCast
+              Create and edit playlist schedules, then sync directly to AzuraCast
             </p>
           </div>
           <div className="flex gap-2">
@@ -238,26 +293,25 @@ export default function PlaylistEditor() {
           </div>
         </div>
 
-        {/* Import Instructions */}
+        {/* Sync Instructions */}
         <Card className="mb-6 border-primary/20 bg-primary/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <ExternalLink className="w-5 h-5" />
-              Import Instructions
+              <CheckCircle2 className="w-5 h-5" />
+              Direct AzuraCast Sync
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <ol className="list-decimal list-inside space-y-1">
               <li>Configure your playlists and schedules below</li>
-              <li>Click "Download JSON" to save the export file</li>
-              <li>Go to AzuraCast → Playlists → Import/Export → Import</li>
-              <li>Upload your JSON file and confirm import</li>
-              <li>Verify playlists appear correctly in AzuraCast</li>
+              <li>Click "Save to AzuraCast" to push changes directly</li>
+              <li>Playlists will be created or updated automatically</li>
+              <li>Verify playlists in AzuraCast dashboard</li>
             </ol>
             <div className="mt-4 pt-4 border-t">
               <p className="font-semibold mb-1">Note:</p>
               <p className="text-muted-foreground">
-                This tool only manages schedules. You must still add media files to playlists in AzuraCast after import.
+                This syncs playlist configuration and schedules. You must still add media files to playlists in AzuraCast or via the Media page.
               </p>
             </div>
           </CardContent>
@@ -512,15 +566,33 @@ export default function PlaylistEditor() {
 
         {/* Bottom Actions */}
         {playlists.length > 0 && (
-          <div className="mt-8 flex justify-end gap-4">
-            <Button variant="outline" onClick={copyJson}>
-              <Copy className="w-4 h-4 mr-2" />
-              Copy JSON
-            </Button>
-            <Button onClick={downloadJson}>
-              <Download className="w-4 h-4 mr-2" />
-              Download JSON
-            </Button>
+          <div className="mt-8 flex justify-between items-center">
+            <div className="text-sm text-muted-foreground">
+              {playlists.length} playlist{playlists.length !== 1 ? "s" : ""} configured
+            </div>
+            <div className="flex gap-4">
+              <Button variant="outline" onClick={copyJson}>
+                <Copy className="w-4 h-4 mr-2" />
+                Copy JSON
+              </Button>
+              <Button variant="outline" onClick={downloadJson}>
+                <Download className="w-4 h-4 mr-2" />
+                Download JSON
+              </Button>
+              <Button onClick={syncToAzuraCast} disabled={syncing}>
+                {syncing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Syncing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Save to AzuraCast
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         )}
       </div>
