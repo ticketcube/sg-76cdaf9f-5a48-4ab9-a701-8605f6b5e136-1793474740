@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -935,6 +935,63 @@ export type Database = {
           user_id?: string
           venue?: string
           venue_capacity?: number
+        }
+        Relationships: []
+      }
+      extraction_jobs: {
+        Row: {
+          aimc_key: string | null
+          artist: string | null
+          asset_id: string
+          asset_name: string
+          created_at: string
+          created_by: string | null
+          duration_sec: number | null
+          error: string | null
+          id: string
+          radio_path: string | null
+          save_to_aimc: boolean
+          save_to_radio: boolean
+          size_bytes: number | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          aimc_key?: string | null
+          artist?: string | null
+          asset_id: string
+          asset_name: string
+          created_at?: string
+          created_by?: string | null
+          duration_sec?: number | null
+          error?: string | null
+          id?: string
+          radio_path?: string | null
+          save_to_aimc?: boolean
+          save_to_radio?: boolean
+          size_bytes?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          aimc_key?: string | null
+          artist?: string | null
+          asset_id?: string
+          asset_name?: string
+          created_at?: string
+          created_by?: string | null
+          duration_sec?: number | null
+          error?: string | null
+          id?: string
+          radio_path?: string | null
+          save_to_aimc?: boolean
+          save_to_radio?: boolean
+          size_bytes?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }

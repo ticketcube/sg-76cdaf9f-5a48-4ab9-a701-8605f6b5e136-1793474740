@@ -78,6 +78,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                           <DropdownMenuItem asChild>
                             <Link href="/admin/playlists">Playlists</Link>
                           </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href="/admin/extract-audio">Extract Audio</Link>
+                          </DropdownMenuItem>
                         </>
                       )}
                       <DropdownMenuSeparator />
