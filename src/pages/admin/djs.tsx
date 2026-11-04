@@ -71,10 +71,6 @@ export default function DJsPage() {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  const AZURACAST_BASE_URL = process.env.NEXT_PUBLIC_AZURACAST_URL || "https://radio.onestowatch.live";
-  const AZURACAST_API_KEY = process.env.AZURACAST_API_KEY;
-  const STATION_ID = process.env.AZURACAST_STATION_ID || "2";
-
   useEffect(() => {
     loadStreamers();
   }, []);
@@ -158,29 +154,27 @@ export default function DJsPage() {
     
     setSaving(true);
     try {
-      const response = await fetch(
-        `${AZURACAST_BASE_URL}/api/station/${STATION_ID}/streamer/${editingStreamer.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-API-Key": AZURACAST_API_KEY || ""
-          },
-          body: JSON.stringify({
-            enforce_schedule: enforceSchedule,
-            schedule_items: editingSchedules.map(s => ({
-              start_time: s.start_time,
-              end_time: s.end_time,
-              days: s.days,
-              start_date: s.start_date,
-              end_date: s.end_date
-            }))
-          })
-        }
-      );
+      const response = await fetch("/api/admin/update-streamer-schedule", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          streamer_id: editingStreamer.id,
+          enforce_schedule: enforceSchedule,
+          schedule_items: editingSchedules.map(s => ({
+            start_time: s.start_time,
+            end_time: s.end_time,
+            days: s.days,
+            start_date: s.start_date,
+            end_date: s.end_date
+          }))
+        })
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to update schedule");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update schedule");
       }
 
       toast({
