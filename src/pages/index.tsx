@@ -2,7 +2,13 @@ import { useEffect, useState, useRef } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { ScheduleCard } from "@/pages/embed/schedule";
+import dynamic from "next/dynamic";
+
+// Lazy-load the schedule component for faster initial page load
+const ScheduleCard = dynamic(
+  () => import("@/pages/embed/schedule").then(mod => ({ default: mod.ScheduleCard })),
+  { ssr: false }
+);
 interface NowPlaying {
     now_playing: {
         song: {

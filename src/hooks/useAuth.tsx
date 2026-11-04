@@ -27,27 +27,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session and user with error handling
     const initializeAuth = async () => {
       try {
-        const session = await authService.getCurrentSession();
-        setSession(session);
+        // Parallelize session and user fetch
+        const [session, user] = await Promise.all([
+          authService.getCurrentSession(),
+          authService.getCurrentUser()
+        ]);
         
-        const user = await authService.getCurrentUser();
+        setSession(session);
         setUser(user);
         
+        // Mark as not loading immediately - profile can load in background
+        setLoading(false);
+        
+        // Load profile in background without blocking
         if (user) {
-          try {
-            const profile = await authService.getUserProfile(user.id);
-            setProfile(profile);
-          } catch (profileError) {
-            console.error("Failed to load user profile:", profileError);
-            setProfile(null);
-          }
+          authService.getUserProfile(user.id)
+            .then(setProfile)
+            .catch((error) => {
+              console.error("Failed to load user profile:", error);
+              setProfile(null);
+            });
         }
       } catch (error) {
         console.error("Auth initialization error:", error);
         setUser(null);
         setProfile(null);
         setSession(null);
-      } finally {
         setLoading(false);
       }
     };
@@ -67,13 +72,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } : null);
 
         if (user) {
-          try {
-            const profile = await authService.getUserProfile(user.id);
-            setProfile(profile);
-          } catch (error) {
-            console.error("Failed to load profile on auth change:", error);
-            setProfile(null);
-          }
+          authService.getUserProfile(user.id)
+            .then(setProfile)
+            .catch((error) => {
+              console.error("Failed to load profile on auth change:", error);
+              setProfile(null);
+            });
         } else {
           setProfile(null);
         }

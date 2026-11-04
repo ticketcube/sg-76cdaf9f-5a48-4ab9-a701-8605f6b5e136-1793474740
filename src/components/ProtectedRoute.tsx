@@ -29,6 +29,7 @@ export function ProtectedRoute({
     }
   }, [loading, user, router]);
 
+  // Show loading only while checking auth, not while loading profile
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -41,8 +42,12 @@ export function ProtectedRoute({
     return null;
   }
 
+  // If we have a user but no profile yet, show access denied for protected routes
+  // This prevents waiting for profile load when we know the user doesn't have access
+  const hasProfile = profile !== null;
+
   // Check admin requirement
-  if (requireAdmin && !profile?.is_admin) {
+  if (requireAdmin && hasProfile && !profile?.is_admin) {
     return fallback || (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
@@ -56,7 +61,7 @@ export function ProtectedRoute({
   }
 
   // Check staff requirement
-  if (requireStaff && !profile?.role && !profile?.is_admin) {
+  if (requireStaff && hasProfile && !profile?.role && !profile?.is_admin) {
     return fallback || (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
@@ -70,7 +75,7 @@ export function ProtectedRoute({
   }
 
   // Check specific role requirement
-  if (requireRole && profile?.role !== requireRole) {
+  if (requireRole && hasProfile && profile?.role !== requireRole) {
     return fallback || (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
