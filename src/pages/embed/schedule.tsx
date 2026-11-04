@@ -4,6 +4,8 @@ import { Radio } from "lucide-react";
 interface ScheduleItem {
     start: string;
     end: string;
+    start_timestamp?: number;
+    end_timestamp?: number;
     name: string;
     description?: string;
     is_now: boolean;
@@ -13,33 +15,63 @@ interface ScheduleItem {
 
 interface ScheduleData {
     today: ScheduleItem[];
-    week: Record<string, ScheduleItem[]>;
+    week?: Record<string, ScheduleItem[]>;
     current_day: string;
     timezone: string;
 }
 
+type Tab = "today" | "week";
+
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const TZ = "America/Los_Angeles";
 
 function formatTime(item: ScheduleItem): string {
     const t = item.parsed_time;
-    if (!t) return item.start || "--:--";
-    const period = t.hours >= 12 ? "PM" : "AM";
-    const h = t.hours === 0 ? 12 : t.hours > 12 ? t.hours - 12 : t.hours;
-    return `${h}:${String(t.minutes).padStart(2, "0")} ${period}`;
+    if (t) {
+        const period = t.hours >= 12 ? "PM" : "AM";
+        const h = t.hours === 0 ? 12 : t.hours > 12 ? t.hours - 12 : t.hours;
+        return `${h}:${String(t.minutes).padStart(2, "0")} ${period}`;
+    }
+    // Week items from /api/schedule have no parsed_time, so format the raw start in PT.
+    const d = item.start_timestamp ? new Date(item.start_timestamp * 1000) : new Date(item.start);
+    if (isNaN(d.getTime())) return "--:--";
+    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: TZ });
 }
 
-function Row({ item, live }: { item: ScheduleItem; live: boolean }) {
-    const now = live && item.is_now;
+function startMs(item: ScheduleItem): number {
+    return item.start_timestamp ? item.start_timestamp * 1000 : new Date(item.start).getTime();
+}
+
+function endMs(item: ScheduleItem): number {
+    return item.end_timestamp ? item.end_timestamp * 1000 : new Date(item.end).getTime();
+}
+
+// Days from today onward (today first, then the next six), each holding only shows that haven't ended.
+function upcomingWeek(schedule: ScheduleData): { day: string; items: ScheduleItem[] }[] {
+    const now = Date.now();
+    const horizon = now + 7 * 24 * 60 * 60 * 1000;
+    const startIdx = Math.max(0, DAYS.indexOf(schedule.current_day));
+    const ordered = [...DAYS.slice(startIdx), ...DAYS.slice(0, startIdx)];
+    return ordered.map((day) => ({
+        day,
+        items: (schedule.week?.[day] ?? [])
+            .filter((item) => endMs(item) > now && startMs(item) < horizon)
+            .sort((a, b) => startMs(a) - startMs(b)),
+    }));
+}
+
+function ScheduleRow({ item, showNow = true }: { item: ScheduleItem; showNow?: boolean }) {
+    const live = showNow && item.is_now;
     return (
-        <li className={`flex items-center gap-3 rounded-md px-2 py-2 ${now ? "bg-primary/10 ring-1 ring-primary/40" : ""}`}>
-            <span className={`w-16 shrink-0 font-mono text-xs ${now ? "text-primary" : "text-muted"}`}>
-                {now ? "NOW" : formatTime(item)}
+        <li className={`flex items-center gap-3 rounded-md px-2 py-2 ${live ? "bg-primary/10 ring-1 ring-primary/40" : ""}`}>
+            <span className={`w-16 shrink-0 font-mono text-xs ${live ? "text-primary" : "text-muted"}`}>
+                {live ? "NOW" : formatTime(item)}
             </span>
             <div className="flex-1 min-w-0">
                 <div className="font-semibold text-foreground text-sm truncate">{item.name}</div>
                 {item.description && <div className="text-muted text-xs truncate">{item.description}</div>}
             </div>
-            {now && <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />}
+            {live && <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />}
         </li>
     );
 }
@@ -47,7 +79,7 @@ function Row({ item, live }: { item: ScheduleItem; live: boolean }) {
 export function ScheduleCard() {
     const [schedule, setSchedule] = useState < ScheduleData | null > (null);
     const [loadError, setLoadError] = useState(false);
-    const [tab, setTab] = useState < "today" | "week" > ("today");
+    const [tab, setTab] = useState < Tab > ("today");
 
     useEffect(() => {
         const load = async () => {
@@ -62,23 +94,16 @@ export function ScheduleCard() {
             }
         };
         load();
-        const id = setInterval(load, 60000);
-        return () => clearInterval(id);
+        const interval = setInterval(load, 60000);
+        return () => clearInterval(interval);
     }, []);
 
-    // Week ordered starting from today
-    const start = schedule ? Math.max(0, DAYS.indexOf(schedule.current_day)) : 0;
-    const weekDays = [...DAYS.slice(start), ...DAYS.slice(0, start)];
+    const tabClass = (t: Tab) =>
+        `px-2.5 py-1 rounded font-mono text-[11px] uppercase tracking-wide transition-colors ${tab === t ? "bg-primary text-primary-foreground" : "text-muted hover:text-foreground"
+        }`;
 
-    const tabBtn = (key: "today" | "week", label: string) => (
-        <button
-            onClick={() => setTab(key)}
-            className={`text-xs font-mono px-2 py-1 rounded-md transition-colors ${tab === key ? "bg-primary/10 text-primary ring-1 ring-primary/40" : "text-muted hover:text-foreground"
-                }`}
-        >
-            {label}
-        </button>
-    );
+    const week = schedule ? upcomingWeek(schedule) : [];
+    const weekHasItems = week.some((d) => d.items.length > 0);
 
     return (
         <div className="bg-accent rounded-lg p-4">
@@ -90,45 +115,54 @@ export function ScheduleCard() {
                 <span className="text-muted text-xs font-mono">All times PT</span>
             </div>
 
-            <div className="flex gap-2 mb-3">
-                {tabBtn("today", "Today")}
-                {tabBtn("week", "This Week")}
+            <div className="flex gap-1 mb-3" role="tablist">
+                <button type="button" role="tab" aria-selected={tab === "today"} className={tabClass("today")} onClick={() => setTab("today")}>
+                    Today
+                </button>
+                <button type="button" role="tab" aria-selected={tab === "week"} className={tabClass("week")} onClick={() => setTab("week")}>
+                    This Week
+                </button>
             </div>
 
             {loadError && !schedule ? (
                 <div className="text-muted text-xs">Schedule unavailable. Retrying...</div>
             ) : !schedule ? (
                 <div className="space-y-3">
-                    {[1, 2, 3].map((i) => <div key={i} className="h-4 bg-muted rounded animate-pulse" />)}
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-4 bg-muted rounded animate-pulse" />
+                    ))}
                 </div>
             ) : tab === "today" ? (
                 schedule.today.length === 0 ? (
                     <div className="text-muted text-xs">No schedule for today.</div>
                 ) : (
                     <ul className="space-y-1">
-                        {schedule.today.map((item, i) => <Row key={i} item={item} live />)}
+                        {schedule.today.map((item, i) => (
+                            <ScheduleRow key={i} item={item} />
+                        ))}
                     </ul>
                 )
+            ) : !weekHasItems ? (
+                <div className="text-muted text-xs">Nothing scheduled this week yet.</div>
             ) : (
-                <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
-                    {weekDays.map((day) => {
-                        const items = schedule.week?.[day] ?? [];
-                        const isToday = day === schedule.current_day;
-                        return (
+                <div className="space-y-4">
+                    {week.map(({ day, items }, idx) =>
+                        items.length === 0 ? null : (
                             <div key={day}>
-                                <div className={`font-mono text-xs uppercase tracking-wide mb-1 ${isToday ? "text-primary" : "text-muted"}`}>
-                                    {isToday ? `${day} · Today` : day}
+                                <div className="flex items-center gap-2 px-2 mb-1">
+                                    <span className={`font-mono text-[11px] uppercase tracking-wide ${idx === 0 ? "text-primary" : "text-muted"}`}>
+                                        {idx === 0 ? "Today" : day}
+                                    </span>
+                                    <span className="h-px flex-1 bg-muted/30" />
                                 </div>
-                                {items.length === 0 ? (
-                                    <div className="text-muted text-xs px-2 py-1">No scheduled programming</div>
-                                ) : (
-                                    <ul className="space-y-1">
-                                        {items.map((item, i) => <Row key={i} item={item} live={isToday} />)}
-                                    </ul>
-                                )}
+                                <ul className="space-y-1">
+                                    {items.map((item, i) => (
+                                        <ScheduleRow key={i} item={item} showNow={idx === 0} />
+                                    ))}
+                                </ul>
                             </div>
-                        );
-                    })}
+                        )
+                    )}
                 </div>
             )}
         </div>
