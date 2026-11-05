@@ -44,7 +44,7 @@ export default function OTWIntegrationDemo() {
         <section className="container mx-auto px-4 py-8">
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Main Featured Content */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-3 space-y-6">
               {/* Featured Article */}
               <Link href="#" className="block group">
                 <div className="relative aspect-[16/9] overflow-hidden rounded-lg">
@@ -63,8 +63,8 @@ export default function OTWIntegrationDemo() {
                 </div>
               </Link>
 
-              {/* Secondary Features Grid */}
-              <div className="grid md:grid-cols-2 gap-4">
+              {/* Three-Column Row: 2 Articles + Radio Player */}
+              <div className="grid md:grid-cols-3 gap-4">
                 <Link href="#" className="group">
                   <div className="relative aspect-[4/3] overflow-hidden rounded-lg">
                     <img 
@@ -96,60 +96,39 @@ export default function OTWIntegrationDemo() {
                     </div>
                   </div>
                 </Link>
-              </div>
-            </div>
 
-            {/* OTW Radio Sidebar - THE INTEGRATION */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-20 space-y-4">
-                {/* Radio Player Card - COMPACT */}
-                <div className="bg-card rounded-lg border border-primary shadow-md overflow-hidden">
+                {/* OTW RADIO - COMPACT INLINE */}
+                <div className="bg-card rounded-lg border border-primary shadow-md overflow-hidden flex flex-col">
                   <div className="bg-primary text-primary-foreground px-3 py-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Radio className="w-4 h-4 animate-pulse" />
-                      <span className="font-semibold text-sm">OTW RADIO</span>
+                    <div className="flex items-center gap-1.5">
+                      <Radio className="w-3.5 h-3.5 animate-pulse" />
+                      <span className="font-semibold text-xs">OTW RADIO</span>
                     </div>
-                    <div className="flex items-center gap-1 text-xs bg-black/20 px-2 py-0.5 rounded-full">
-                      <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                      <span className="text-xs">LIVE</span>
+                    <div className="flex items-center gap-1 text-xs bg-black/20 px-1.5 py-0.5 rounded-full">
+                      <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
+                      <span className="text-[10px]">LIVE</span>
                     </div>
                   </div>
                   
-                  {/* Embedded Radio Player - Smaller */}
-                  <div className="aspect-video bg-black">
+                  <div className="flex-1 bg-black relative">
                     <iframe
                       src="/embed/player"
-                      className="w-full h-full"
+                      className="w-full h-full absolute inset-0"
                       allow="autoplay"
                       title="OTW Radio Player"
                     />
                   </div>
 
-                  <div className="p-3">
-                    <p className="text-xs font-semibold">24/7 Music Discovery</p>
+                  <div className="p-2.5 bg-card">
+                    <p className="text-xs font-semibold mb-0.5">24/7 Music Discovery</p>
                     <Link 
                       href="/schedule"
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-1 group"
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors group"
                     >
                       <span>View Schedule</span>
-                      <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                      <ExternalLink className="w-2.5 h-2.5 group-hover:translate-x-0.5 transition-transform" />
                     </Link>
                   </div>
-                </div>
-
-                {/* Original Spotify Widget for Reference */}
-                <div className="bg-card rounded-lg border border-border overflow-hidden">
-                  <Link href="https://open.spotify.com/playlist/0EVzFau2kULH9e5dwK2OSI" className="block">
-                    <img 
-                      src="https://s3-us-west-2.amazonaws.com/onestowatch-v2/site_hpcarousel_15DEB31.png"
-                      alt="Now Watching Playlist"
-                      className="w-full"
-                    />
-                    <div className="p-3">
-                      <p className="font-semibold text-sm">Now Watching</p>
-                      <p className="text-xs text-muted-foreground">Your go-to playlist for new music</p>
-                    </div>
-                  </Link>
                 </div>
               </div>
             </div>
