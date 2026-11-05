@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Music, Search, Loader2, Upload, Save } from "lucide-react";
+import { Music, Search, Loader2, Upload, Save, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -120,75 +120,59 @@ export default function MediaPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
+    if (!file.type.startsWith("audio/")) {
+      toast({
+        title: "Invalid File",
+        description: "Please select an audio file",
+        variant: "destructive"
+      });
+      event.target.value = "";
+      return;
+    }
+
     setUploading(true);
     setUploadProgress(0);
 
     try {
-      // Step 1: Generate AIMC upload URL (20% progress)
-      setUploadProgress(20);
-      const uploadUrlRes = await fetch("/api/aimc/generate-upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type || "audio/mpeg"
-        })
-      });
-
-      if (!uploadUrlRes.ok) throw new Error("Failed to generate upload URL");
-      const { uploadUrl, assetId } = await uploadUrlRes.json();
-
-      // Step 2: Upload to AIMC (40% progress)
-      setUploadProgress(40);
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "audio/mpeg" },
-        body: file
-      });
-
-      if (!uploadRes.ok) throw new Error("Failed to upload to AIMC");
-
-      // Step 3: Notify AIMC upload complete (60% progress)
-      setUploadProgress(60);
-      await fetch("/api/aimc/asset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assetId,
-          filename: file.name,
-          status: "uploaded"
-        })
-      });
-
-      // Step 4: Upload to AzuraCast (80% progress)
-      setUploadProgress(80);
+      setUploadProgress(30);
+      
+      // Create form data for direct AzuraCast upload
       const formData = new FormData();
       formData.append("file", file);
 
-      const azuracastRes = await fetch("/api/media", {
+      setUploadProgress(50);
+
+      // Upload directly to AzuraCast
+      const response = await fetch("/api/media", {
         method: "POST",
         body: formData
       });
 
-      if (!azuracastRes.ok) throw new Error("Failed to upload to AzuraCast");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || error.error || "Upload failed");
+      }
 
-      // Complete (100% progress)
       setUploadProgress(100);
+      
       toast({
         title: "Upload Complete",
-        description: `${file.name} uploaded to both AIMC and AzuraCast successfully`
+        description: `${file.name} uploaded successfully`
       });
 
       // Refresh media list
       await loadData();
       
-      // Reset upload progress after a short delay
+      // Reset
       setTimeout(() => {
         setUploadProgress(0);
         setUploading(false);
+        event.target.value = "";
       }, 1000);
 
     } catch (err: any) {
+      console.error("Upload error:", err);
       toast({
         title: "Upload Failed",
         description: err.message,
@@ -196,6 +180,7 @@ export default function MediaPage() {
       });
       setUploading(false);
       setUploadProgress(0);
+      event.target.value = "";
     }
   };
 
@@ -223,7 +208,7 @@ export default function MediaPage() {
           <CardHeader>
             <CardTitle>Upload Media</CardTitle>
             <CardDescription>
-              Upload audio files to both AIMC storage and AzuraCast station library
+              Upload audio files directly to AzuraCast station library
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -259,15 +244,18 @@ export default function MediaPage() {
                 <div className="space-y-2">
                   <Progress value={uploadProgress} className="w-full" />
                   <p className="text-xs text-muted-foreground text-center">
-                    {uploadProgress < 20 && "Initializing upload..."}
-                    {uploadProgress >= 20 && uploadProgress < 40 && "Uploading to AIMC..."}
-                    {uploadProgress >= 40 && uploadProgress < 60 && "Processing AIMC upload..."}
-                    {uploadProgress >= 60 && uploadProgress < 80 && "Uploading to AzuraCast..."}
-                    {uploadProgress >= 80 && uploadProgress < 100 && "Finalizing..."}
+                    {uploadProgress < 50 ? "Preparing upload..." : "Uploading to AzuraCast..."}
                     {uploadProgress === 100 && "Complete!"}
                   </p>
                 </div>
               )}
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <p>
+                  Supported formats: MP3, AAC, FLAC, WAV, OGG. 
+                  Files are uploaded to the AzuraCast media library and available immediately.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
