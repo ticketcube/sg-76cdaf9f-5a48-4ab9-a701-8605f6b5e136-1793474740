@@ -154,6 +154,22 @@ export default function DJsPage() {
   const saveSchedule = async () => {
     if (!editingStreamer) return;
     
+    const payload = {
+      streamer_id: editingStreamer.id,
+      enforce_schedule: enforceSchedule,
+      schedule_items: editingSchedules.map(s => ({
+        start_time: s.start_time,
+        end_time: s.end_time,
+        days: s.days,
+        start_date: formatDateForAzuraCast(s.start_date),
+        end_date: formatDateForAzuraCast(s.end_date)
+      }))
+    };
+
+    console.log("=== Saving Schedule ===");
+    console.log("Editing Schedules:", editingSchedules);
+    console.log("Payload:", JSON.stringify(payload, null, 2));
+
     setSaving(true);
     try {
       const response = await fetch("/api/admin/update-streamer-schedule", {
@@ -161,23 +177,16 @@ export default function DJsPage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          streamer_id: editingStreamer.id,
-          enforce_schedule: enforceSchedule,
-          schedule_items: editingSchedules.map(s => ({
-            start_time: s.start_time,
-            end_time: s.end_time,
-            days: s.days,
-            start_date: formatDateForAzuraCast(s.start_date),
-            end_date: formatDateForAzuraCast(s.end_date)
-          }))
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to update schedule");
       }
+
+      const result = await response.json();
+      console.log("Save result:", result);
 
       toast({
         title: "Success",
@@ -187,6 +196,7 @@ export default function DJsPage() {
       closeScheduleEditor();
       await loadStreamers();
     } catch (error: any) {
+      console.error("Save error:", error);
       toast({
         title: "Error",
         description: error.message,

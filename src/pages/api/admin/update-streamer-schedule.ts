@@ -34,7 +34,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "streamer_id is required" });
     }
 
+    console.log("=== Updating Streamer Schedule ===");
+    console.log("Streamer ID:", streamer_id);
+    console.log("Enforce Schedule:", enforce_schedule);
+    console.log("Schedule Items:", JSON.stringify(schedule_items, null, 2));
+
     // Update streamer schedule in AzuraCast
+    const payload = {
+      enforce_schedule,
+      schedule_items
+    };
+    
+    console.log("Payload to AzuraCast:", JSON.stringify(payload, null, 2));
+
     const updateResponse = await fetch(
       `${AZURACAST_BASE_URL}/api/station/${STATION_ID}/streamer/${streamer_id}`,
       {
@@ -43,10 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           "Content-Type": "application/json",
           "X-API-Key": AZURACAST_API_KEY
         },
-        body: JSON.stringify({
-          enforce_schedule,
-          schedule_items
-        })
+        body: JSON.stringify(payload)
       }
     );
 
@@ -57,6 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const updatedStreamer = await updateResponse.json();
+    console.log("AzuraCast response:", JSON.stringify(updatedStreamer, null, 2));
 
     return res.status(200).json({
       success: true,
