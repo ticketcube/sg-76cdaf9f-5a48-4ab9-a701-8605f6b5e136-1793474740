@@ -83,6 +83,8 @@ export default function DJsPage() {
       const response = await fetch("/api/admin/live-djs");
       if (response.ok) {
         const data = await response.json();
+        console.log("=== Loaded Streamers Data ===");
+        console.log(JSON.stringify(data, null, 2));
         setStreamers(data);
       } else {
         toast({
@@ -103,8 +105,33 @@ export default function DJsPage() {
   };
 
   const openScheduleEditor = (streamer: Streamer) => {
+    console.log("=== Opening Schedule Editor ===");
+    console.log("Streamer:", streamer);
+    console.log("Schedule Items:", streamer.schedule_items);
+    
+    // Validate and clean schedule items
+    const validSchedules = (streamer.schedule_items || []).map(item => {
+      // Ensure start_time and end_time are valid numbers
+      const start_time = typeof item.start_time === 'number' && !isNaN(item.start_time) 
+        ? item.start_time 
+        : 0;
+      const end_time = typeof item.end_time === 'number' && !isNaN(item.end_time) 
+        ? item.end_time 
+        : 1439;
+      
+      return {
+        start_time,
+        end_time,
+        days: Array.isArray(item.days) ? item.days : [1],
+        start_date: item.start_date || null,
+        end_date: item.end_date || null
+      };
+    });
+    
+    console.log("Validated Schedules:", validSchedules);
+    
     setEditingStreamer(streamer);
-    setEditingSchedules(streamer.schedule_items || []);
+    setEditingSchedules(validSchedules);
     setEnforceSchedule(streamer.enforce_schedule || false);
   };
 

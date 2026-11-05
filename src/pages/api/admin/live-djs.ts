@@ -68,8 +68,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const azuracastStreamers: AzuraCastStreamer[] = await streamersResponse.json();
+    console.log("=== AzuraCast Streamers Response ===");
     console.log("Fetched streamers count:", azuracastStreamers.length);
-    console.log("Streamers data:", JSON.stringify(azuracastStreamers, null, 2));
+    
+    // Log each streamer's schedule in detail
+    azuracastStreamers.forEach(streamer => {
+      if (streamer.schedule_items && streamer.schedule_items.length > 0) {
+        console.log(`\nStreamer: ${streamer.streamer_username} (ID: ${streamer.id})`);
+        console.log("Schedule Items:", JSON.stringify(streamer.schedule_items, null, 2));
+      }
+    });
 
     // Fetch all user profiles from database to enrich streamer data
     const { data: allProfiles } = await supabase
