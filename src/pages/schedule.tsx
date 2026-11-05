@@ -16,27 +16,27 @@ export default function SchedulePage() {
         <Schedule />
       </div>
       <!-- OTW Radio Widget -->
-      <div id="otw-radio-widget">
-        <iframe
-          id="otw-radio-iframe"
-          src="https://onestowatch.live/embed/widget"
-          style="width: 100%; height: 180px; border: none; border-radius: 8px;"
-          allow="autoplay"
-          title="OTW Radio Player"
-        ></iframe>
-      </div>
+<div id="otw-radio-widget">
+  <iframe 
+    id="otw-radio-iframe"
+    src="https://onestowatch.live/embed/widget" 
+    style="width: 100%; height: 180px; border: none; border-radius: 8px;"
+    allow="autoplay"
+    title="OTW Radio Player"
+  ></iframe>
+</div>
 
-      <script>
+<script>
 // Auto-resize iframe based on content
-        window.addEventListener('message', function(e) {
+window.addEventListener('message', function(e) {
   if (e.data.type === 'resize') {
     const iframe = document.getElementById('otw-radio-iframe');
-        if (iframe) {
-          iframe.style.height = e.data.height + 'px';
+    if (iframe) {
+      iframe.style.height = e.data.height + 'px';
     }
   }
 });
-      </script>
+</script>
     </div>
   );
 }
