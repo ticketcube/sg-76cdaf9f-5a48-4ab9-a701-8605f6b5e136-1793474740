@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useRouter } from "next/router";
 import { ScheduleCard } from "@/pages/embed/schedule";
+import { ListenerMap } from "@/components/ListenerMap";
 interface NowPlaying {
     now_playing: {
         song: {
@@ -263,6 +264,7 @@ export default function EmbedPlayer() {
                     />
                 </div>
                 <div className="mt-3"><ScheduleCard /></div>
+                <div className="mt-6"><ListenerMap /></div>
             </div>
         </div>
     );
