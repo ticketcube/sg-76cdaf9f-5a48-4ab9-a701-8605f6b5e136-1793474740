@@ -102,21 +102,21 @@ export default function OTWIntegrationDemo() {
             {/* OTW Radio Sidebar - THE INTEGRATION */}
             <div className="lg:col-span-1">
               <div className="sticky top-20 space-y-4">
-                {/* Radio Player Card */}
-                <div className="bg-card rounded-lg border-2 border-primary shadow-lg overflow-hidden">
-                  <div className="bg-primary text-primary-foreground p-4 flex items-center justify-between">
+                {/* Radio Player Card - COMPACT */}
+                <div className="bg-card rounded-lg border border-primary shadow-md overflow-hidden">
+                  <div className="bg-primary text-primary-foreground px-3 py-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Radio className="w-5 h-5 animate-pulse" />
-                      <span className="font-bold text-lg">OTW RADIO</span>
+                      <Radio className="w-4 h-4 animate-pulse" />
+                      <span className="font-semibold text-sm">OTW RADIO</span>
                     </div>
-                    <div className="flex items-center gap-1 text-xs bg-black/20 px-2 py-1 rounded-full">
-                      <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                      LIVE
+                    <div className="flex items-center gap-1 text-xs bg-black/20 px-2 py-0.5 rounded-full">
+                      <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                      <span className="text-xs">LIVE</span>
                     </div>
                   </div>
                   
-                  {/* Embedded Radio Player */}
-                  <div className="aspect-[4/3] bg-black">
+                  {/* Embedded Radio Player - Smaller */}
+                  <div className="aspect-video bg-black">
                     <iframe
                       src="/embed/player"
                       className="w-full h-full"
@@ -125,57 +125,20 @@ export default function OTWIntegrationDemo() {
                     />
                   </div>
 
-                  <div className="p-4 space-y-3">
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Now Playing</p>
-                      <p className="font-semibold">24/7 Music Discovery Stream</p>
-                      <p className="text-sm text-muted-foreground">Featuring Ones To Watch Artists</p>
-                    </div>
-
-                    <div className="pt-3 border-t border-border">
-                      <Link 
-                        href="/schedule"
-                        className="flex items-center justify-between text-sm hover:text-primary transition-colors group"
-                      >
-                        <span>View Full Schedule</span>
-                        <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Features */}
-                <div className="space-y-2">
-                  <div className="bg-card rounded-lg p-4 border border-border">
-                    <div className="flex items-start gap-3">
-                      <PlayCircle className="w-5 h-5 text-primary mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-sm mb-1">Live DJ Sets</p>
-                        <p className="text-xs text-muted-foreground">
-                          Tune in for exclusive live sets from emerging artists
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-card rounded-lg p-4 border border-border">
-                    <div className="flex items-start gap-3">
-                      <Radio className="w-5 h-5 text-primary mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-sm mb-1">Always On</p>
-                        <p className="text-xs text-muted-foreground">
-                          Continuous music discovery, 24/7 stream
-                        </p>
-                      </div>
-                    </div>
+                  <div className="p-3">
+                    <p className="text-xs font-semibold">24/7 Music Discovery</p>
+                    <Link 
+                      href="/schedule"
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-1 group"
+                    >
+                      <span>View Schedule</span>
+                      <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    </Link>
                   </div>
                 </div>
 
                 {/* Original Spotify Widget for Reference */}
-                <div className="bg-card rounded-lg border border-border overflow-hidden opacity-60">
-                  <div className="p-3 bg-muted">
-                    <p className="text-xs text-muted-foreground">Original Spotify Widget:</p>
-                  </div>
+                <div className="bg-card rounded-lg border border-border overflow-hidden">
                   <Link href="https://open.spotify.com/playlist/0EVzFau2kULH9e5dwK2OSI" className="block">
                     <img 
                       src="https://s3-us-west-2.amazonaws.com/onestowatch-v2/site_hpcarousel_15DEB31.png"
