@@ -10,9 +10,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, ArrowLeft, Radio, Edit, Save, Plus, Trash2, X, Calendar, Clock } from "lucide-react";
+import { Loader2, ArrowLeft, Radio, Edit, Save, Plus, Trash2, X, Calendar, Clock, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { localTimeToPackificMinutes, pacificMinutesToLocalTime, formatDateForAzuraCast, getCurrentPacificTime } from "@/lib/timezoneUtils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ScheduleItem {
   start_time: number;
@@ -166,8 +168,8 @@ export default function DJsPage() {
             start_time: s.start_time,
             end_time: s.end_time,
             days: s.days,
-            start_date: s.start_date,
-            end_date: s.end_date
+            start_date: formatDateForAzuraCast(s.start_date),
+            end_date: formatDateForAzuraCast(s.end_date)
           }))
         })
       });
@@ -317,13 +319,21 @@ export default function DJsPage() {
       </div>
 
       <Dialog open={!!editingStreamer} onOpenChange={closeScheduleEditor}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Schedule - {editingStreamer?.display_name}</DialogTitle>
             <DialogDescription>
-              Configure when this streamer can broadcast
+              Configure when this streamer can broadcast (Pacific Time)
             </DialogDescription>
           </DialogHeader>
+
+          <Alert>
+            <Clock className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Pacific Time Zone:</strong> All times are in Pacific Time (PT). 
+              Current PT time: {getCurrentPacificTime()}
+            </AlertDescription>
+          </Alert>
 
           <div className="space-y-6 py-4">
             <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -364,20 +374,30 @@ export default function DJsPage() {
                           <div className="flex-1 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <Label className="text-xs">Start Time</Label>
+                                <Label className="text-xs">Start Time (Your Local)</Label>
                                 <Input
                                   type="time"
-                                  value={intToTime(slot.start_time)}
-                                  onChange={(e) => updateSchedule(idx, { start_time: timeToInt(e.target.value) })}
+                                  value={pacificMinutesToLocalTime(slot.start_time)}
+                                  onChange={(e) => updateSchedule(idx, { 
+                                    start_time: localTimeToPackificMinutes(e.target.value) 
+                                  })}
                                 />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  PT: {formatTime(slot.start_time)}
+                                </p>
                               </div>
                               <div>
-                                <Label className="text-xs">End Time</Label>
+                                <Label className="text-xs">End Time (Your Local)</Label>
                                 <Input
                                   type="time"
-                                  value={intToTime(slot.end_time)}
-                                  onChange={(e) => updateSchedule(idx, { end_time: timeToInt(e.target.value) })}
+                                  value={pacificMinutesToLocalTime(slot.end_time)}
+                                  onChange={(e) => updateSchedule(idx, { 
+                                    end_time: localTimeToPackificMinutes(e.target.value) 
+                                  })}
                                 />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  PT: {formatTime(slot.end_time)}
+                                </p>
                               </div>
                             </div>
                             <div>
@@ -393,6 +413,34 @@ export default function DJsPage() {
                                     {day}
                                   </Button>
                                 ))}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label className="text-xs">Start Date (Optional)</Label>
+                                <Input
+                                  type="date"
+                                  value={slot.start_date || ""}
+                                  onChange={(e) => updateSchedule(idx, { 
+                                    start_date: e.target.value || null 
+                                  })}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Leave empty for no start date
+                                </p>
+                              </div>
+                              <div>
+                                <Label className="text-xs">End Date (Optional)</Label>
+                                <Input
+                                  type="date"
+                                  value={slot.end_date || ""}
+                                  onChange={(e) => updateSchedule(idx, { 
+                                    end_date: e.target.value || null 
+                                  })}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Leave empty for ongoing
+                                </p>
                               </div>
                             </div>
                           </div>

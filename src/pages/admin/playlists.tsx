@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Music, Calendar, Clock, ExternalLink, Edit, Loader2, Plus, Trash2, Save, X } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { localTimeToPackificMinutes, pacificMinutesToLocalTime, formatDateForAzuraCast, getCurrentPacificTime } from "@/lib/timezoneUtils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ScheduleItem {
   id?: number;
@@ -165,8 +167,8 @@ export default function PlaylistManagementPage() {
               start_time: s.start_time,
               end_time: s.end_time,
               days: s.days,
-              start_date: s.start_date,
-              end_date: s.end_date,
+              start_date: formatDateForAzuraCast(s.start_date),
+              end_date: formatDateForAzuraCast(s.end_date),
               loop_once: s.loop_once || false
             }))
           }]
@@ -236,7 +238,7 @@ export default function PlaylistManagementPage() {
                     <p className="text-sm text-muted mb-4">No playlists found in AzuraCast</p>
                     <Button asChild variant="outline">
                       <a 
-                        href={`${azuracastUrl}/admin/station/1/playlists`} 
+                        href={`${azuracastUrl}/admin/station/2/playlists`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                       >
@@ -335,63 +337,110 @@ export default function PlaylistManagementPage() {
                 {!selectedPlaylist ? (
                   <p className="text-sm text-muted">Select a playlist to view schedule</p>
                 ) : isEditing ? (
-                  <div className="space-y-3">
-                    {editingSchedules.map((slot, idx) => (
-                      <Card key={idx} className="bg-muted/30">
-                        <CardContent className="pt-4 space-y-4">
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex-1 space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label className="text-xs">Start Time</Label>
-                                  <Input
-                                    type="time"
-                                    value={intToTime(slot.start_time)}
-                                    onChange={(e) => updateSchedule(idx, { start_time: timeToInt(e.target.value) })}
-                                  />
+                  <>
+                    <Alert className="mb-4">
+                      <Clock className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Pacific Time Zone:</strong> All times are in Pacific Time (PT). 
+                        Current PT: {getCurrentPacificTime()}
+                      </AlertDescription>
+                    </Alert>
+                    <div className="space-y-3">
+                      {editingSchedules.map((slot, idx) => (
+                        <Card key={idx} className="bg-muted/30">
+                          <CardContent className="pt-4 space-y-4">
+                            <div className="flex justify-between items-start gap-4">
+                              <div className="flex-1 space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label className="text-xs">Start Time (Your Local)</Label>
+                                    <Input
+                                      type="time"
+                                      value={pacificMinutesToLocalTime(slot.start_time)}
+                                      onChange={(e) => updateSchedule(idx, { 
+                                        start_time: localTimeToPackificMinutes(e.target.value) 
+                                      })}
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      PT: {formatTime(slot.start_time)}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs">End Time (Your Local)</Label>
+                                    <Input
+                                      type="time"
+                                      value={pacificMinutesToLocalTime(slot.end_time)}
+                                      onChange={(e) => updateSchedule(idx, { 
+                                        end_time: localTimeToPackificMinutes(e.target.value) 
+                                      })}
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      PT: {formatTime(slot.end_time)}
+                                    </p>
+                                  </div>
                                 </div>
                                 <div>
-                                  <Label className="text-xs">End Time</Label>
-                                  <Input
-                                    type="time"
-                                    value={intToTime(slot.end_time)}
-                                    onChange={(e) => updateSchedule(idx, { end_time: timeToInt(e.target.value) })}
-                                  />
+                                  <Label className="text-xs mb-2 block">Active Days</Label>
+                                  <div className="flex flex-wrap gap-2">
+                                    {DAYS.map((day, dayIdx) => (
+                                      <Button
+                                        key={dayIdx}
+                                        variant={slot.days.includes(dayIdx + 1) ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => toggleDay(idx, dayIdx)}
+                                      >
+                                        {day}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label className="text-xs">Start Date (Optional)</Label>
+                                    <Input
+                                      type="date"
+                                      value={slot.start_date || ""}
+                                      onChange={(e) => updateSchedule(idx, { 
+                                        start_date: e.target.value || null 
+                                      })}
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Leave empty for no start date
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs">End Date (Optional)</Label>
+                                    <Input
+                                      type="date"
+                                      value={slot.end_date || ""}
+                                      onChange={(e) => updateSchedule(idx, { 
+                                        end_date: e.target.value || null 
+                                      })}
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Leave empty for ongoing
+                                    </p>
+                                  </div>
                                 </div>
                               </div>
-                              <div>
-                                <Label className="text-xs mb-2 block">Active Days</Label>
-                                <div className="flex flex-wrap gap-2">
-                                  {DAYS.map((day, dayIdx) => (
-                                    <Button
-                                      key={dayIdx}
-                                      variant={slot.days.includes(dayIdx + 1) ? "default" : "outline"}
-                                      size="sm"
-                                      onClick={() => toggleDay(idx, dayIdx)}
-                                    >
-                                      {day}
-                                    </Button>
-                                  ))}
-                                </div>
-                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteSchedule(idx)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => deleteSchedule(idx)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    <Button variant="outline" onClick={addSchedule} className="w-full">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Schedule Slot
-                    </Button>
-                  </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                      <Button variant="outline" onClick={addSchedule} className="w-full">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Schedule Slot
+                      </Button>
+                    </div>
+                  </>
                 ) : selectedPlaylist.schedule_items.length === 0 ? (
                   <div className="text-center py-8">
                     <Clock className="w-12 h-12 mx-auto mb-4 text-muted" />
