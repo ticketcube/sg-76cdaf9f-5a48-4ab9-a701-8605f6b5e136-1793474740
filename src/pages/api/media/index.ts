@@ -5,6 +5,7 @@ import fs from "fs";
 export const config = {
   api: {
     bodyParser: false,
+    responseLimit: false,
   },
 };
 
@@ -46,8 +47,11 @@ export default async function handler(
     }
   } else if (req.method === "POST") {
     try {
-      // Parse multipart form data
-      const form = formidable({});
+      // Parse multipart form data with increased size limit for audio files
+      const form = formidable({
+        maxFileSize: 50 * 1024 * 1024, // 50MB limit for audio files
+        keepExtensions: true,
+      });
       const [fields, files] = await form.parse(req);
       
       const uploadedFile = Array.isArray(files.file) ? files.file[0] : files.file;
