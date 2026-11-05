@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Users, MapPin } from "lucide-react";
+import { Radio } from "lucide-react";
 
 interface ListenerLocation {
   description: string;
@@ -19,7 +18,6 @@ interface ListenersData {
 
 export function ListenerMap() {
   const [data, setData] = useState<ListenersData | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchListeners = async () => {
@@ -31,8 +29,6 @@ export function ListenerMap() {
         }
       } catch (error) {
         console.error("Failed to fetch listeners:", error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -41,78 +37,132 @@ export function ListenerMap() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) {
-    return (
-      <Card className="bg-accent/50 border-muted/20 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Users className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold text-foreground">Live Listeners</h3>
-        </div>
-        <div className="text-muted text-sm">Loading...</div>
-      </Card>
-    );
-  }
-
-  if (!data || data.total === 0) {
-    return (
-      <Card className="bg-accent/50 border-muted/20 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Users className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold text-foreground">Live Listeners</h3>
-        </div>
-        <div className="text-4xl font-bold font-mono text-foreground mb-2">0</div>
-        <div className="text-muted text-sm">No active listeners</div>
-      </Card>
-    );
-  }
-
-  const maxListeners = Math.max(...data.current.map(l => l.listeners));
+  // Convert lat/lon to SVG coordinates (Equirectangular projection)
+  const projectCoordinates = (lat: number, lon: number) => {
+    const x = ((lon + 180) / 360) * 800;
+    const y = ((90 - lat) / 180) * 400;
+    return { x, y };
+  };
 
   return (
-    <Card className="bg-accent/50 border-muted/20 p-6">
-      <div className="flex items-center gap-3 mb-4">
-        <Users className="h-5 w-5 text-primary" />
-        <h3 className="font-semibold text-foreground">Live Listeners</h3>
-      </div>
-      
-      <div className="mb-6">
-        <div className="text-4xl font-bold font-mono text-foreground mb-1">{data.total}</div>
-        <div className="text-muted text-sm">
-          {data.unique} {data.unique === 1 ? "location" : "locations"}
-        </div>
-      </div>
+    <div className="relative w-full h-[300px] bg-accent/30 rounded-lg overflow-hidden border border-muted/20">
+      <svg
+        viewBox="0 0 800 400"
+        className="w-full h-full"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        {/* World map outline (simplified continents) */}
+        <defs>
+          <linearGradient id="mapGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="hsl(var(--muted))" stopOpacity="0.1" />
+            <stop offset="100%" stopColor="hsl(var(--muted))" stopOpacity="0.3" />
+          </linearGradient>
+        </defs>
 
-      {data.current.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm text-muted mb-2">
-            <MapPin className="h-4 w-4" />
-            <span>Listening from</span>
-          </div>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {data.current
-              .sort((a, b) => b.listeners - a.listeners)
-              .slice(0, 10)
-              .map((location, idx) => (
-                <div key={idx} className="flex items-center justify-between text-sm">
-                  <span className="text-foreground/90 truncate flex-1">
-                    {location.description}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 bg-primary/20 rounded-full w-16 overflow-hidden">
-                      <div 
-                        className="h-full bg-primary rounded-full transition-all"
-                        style={{ width: `${(location.listeners / maxListeners) * 100}%` }}
-                      />
-                    </div>
-                    <span className="font-mono text-muted w-6 text-right">
-                      {location.listeners}
-                    </span>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
-    </Card>
+        {/* Grid lines */}
+        <g stroke="hsl(var(--muted))" strokeWidth="0.5" opacity="0.2">
+          {/* Latitude lines */}
+          {Array.from({ length: 9 }, (_, i) => (
+            <line
+              key={`lat-${i}`}
+              x1="0"
+              y1={(i + 1) * 40}
+              x2="800"
+              y2={(i + 1) * 40}
+            />
+          ))}
+          {/* Longitude lines */}
+          {Array.from({ length: 11 }, (_, i) => (
+            <line
+              key={`lon-${i}`}
+              x1={(i + 1) * 66.67}
+              y1="0"
+              x2={(i + 1) * 66.67}
+              y2="400"
+            />
+          ))}
+        </g>
+
+        {/* Simplified continents outline */}
+        <g fill="url(#mapGradient)" stroke="hsl(var(--muted))" strokeWidth="1" opacity="0.4">
+          {/* North America */}
+          <path d="M 100 80 Q 150 60 200 80 L 220 120 L 180 160 L 140 150 L 100 120 Z" />
+          {/* South America */}
+          <path d="M 200 200 L 230 240 L 210 300 L 180 310 L 170 260 Z" />
+          {/* Europe */}
+          <path d="M 380 80 L 420 70 L 450 90 L 440 120 L 400 110 Z" />
+          {/* Africa */}
+          <path d="M 400 140 L 440 160 L 460 220 L 420 260 L 380 240 L 390 180 Z" />
+          {/* Asia */}
+          <path d="M 480 60 Q 580 50 650 80 L 680 120 L 640 160 L 550 150 L 500 120 Z" />
+          {/* Australia */}
+          <path d="M 620 260 L 680 250 L 700 280 L 680 300 L 640 290 Z" />
+        </g>
+
+        {/* Listener antenna markers */}
+        {data?.current.map((location, idx) => {
+          const { x, y } = projectCoordinates(
+            location.location.lat,
+            location.location.lon
+          );
+          const size = Math.min(Math.max(location.listeners * 3, 8), 20);
+
+          return (
+            <g key={idx} className="animate-pulse">
+              {/* Pulsing ring */}
+              <circle
+                cx={x}
+                cy={y}
+                r={size + 8}
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeWidth="1"
+                opacity="0.3"
+              >
+                <animate
+                  attributeName="r"
+                  from={size}
+                  to={size + 12}
+                  dur="2s"
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="opacity"
+                  from="0.6"
+                  to="0"
+                  dur="2s"
+                  repeatCount="indefinite"
+                />
+              </circle>
+
+              {/* Antenna dot */}
+              <circle
+                cx={x}
+                cy={y}
+                r={size / 2}
+                fill="hsl(var(--primary))"
+                opacity="0.8"
+              />
+
+              {/* Antenna signal waves */}
+              <path
+                d={`M ${x - size} ${y - size} Q ${x} ${y - size * 2} ${x + size} ${y - size}`}
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeWidth="1.5"
+                opacity="0.6"
+              />
+              <path
+                d={`M ${x - size * 1.5} ${y - size * 1.5} Q ${x} ${y - size * 2.5} ${x + size * 1.5} ${y - size * 1.5}`}
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeWidth="1"
+                opacity="0.4"
+              />
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
