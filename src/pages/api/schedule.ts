@@ -37,19 +37,20 @@ async function fetchAzuraCastSchedule(): Promise<AzuraCastScheduleItem[]> {
 
 function parseAzuraCastTime(timestamp: number): { hours: number; minutes: number; time24: number } {
   try {
-    // Create date from Unix timestamp and get Pacific Time components
+    // Create date from Unix timestamp
     const date = new Date(timestamp * 1000);
-    const ptString = date.toLocaleString("en-US", { 
+    
+    // Use Intl.DateTimeFormat for reliable timezone conversion
+    const formatter = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/Los_Angeles",
-      hour: "2-digit",
-      minute: "2-digit",
+      hour: "numeric",
+      minute: "numeric",
       hour12: false
     });
     
-    // Parse the formatted string "HH:MM"
-    const [hoursStr, minutesStr] = ptString.split(":");
-    const hours = parseInt(hoursStr, 10);
-    const minutes = parseInt(minutesStr, 10);
+    const parts = formatter.formatToParts(date);
+    const hours = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
+    const minutes = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
     
     return { hours, minutes, time24: hours * 100 + minutes };
   } catch (error) {
