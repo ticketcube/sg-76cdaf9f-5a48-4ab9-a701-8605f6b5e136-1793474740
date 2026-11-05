@@ -56,7 +56,7 @@ export function pacificMinutesToLocalTime(minutes: number): string {
 /**
  * Format a date for AzuraCast (YYYY-MM-DD)
  */
-export function formatDateForAzuraCast(date: Date | string | null): string | null {
+export function formatDateForAzuraCast(date: Date | string | null | undefined): string | null {
   if (!date) return null;
   const d = typeof date === "string" ? new Date(date) : date;
   if (isNaN(d.getTime())) return null;
