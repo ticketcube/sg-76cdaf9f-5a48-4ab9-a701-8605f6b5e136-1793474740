@@ -1,9 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "@/integrations/supabase/client";
+import { azuraCastTimeToMinutes } from "@/lib/timezoneUtils";
 
 const AZURACAST_BASE_URL = process.env.NEXT_PUBLIC_AZURACAST_URL || "https://radio.onestowatch.live";
 const AZURACAST_API_KEY = process.env.AZURACAST_API_KEY;
 const STATION_ID = process.env.AZURACAST_STATION_ID || "2";
+
+interface AzuraCastScheduleItem {
+  start_time: number;
+  end_time: number;
+  days: number[];
+  start_date?: string | null;
+  end_date?: string | null;
+}
 
 interface AzuraCastStreamer {
   id: number;
@@ -11,7 +20,7 @@ interface AzuraCastStreamer {
   display_name: string;
   is_active: boolean;
   enforce_schedule?: boolean;
-  schedule_items?: ScheduleItem[];
+  schedule_items?: AzuraCastScheduleItem[];
 }
 
 interface ScheduleItem {
@@ -75,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     azuracastStreamers.forEach(streamer => {
       if (streamer.schedule_items && streamer.schedule_items.length > 0) {
         console.log(`\nStreamer: ${streamer.streamer_username} (ID: ${streamer.id})`);
-        console.log("Schedule Items:", JSON.stringify(streamer.schedule_items, null, 2));
+        console.log("Schedule Items (HHMM format):", JSON.stringify(streamer.schedule_items, null, 2));
       }
     });
 
@@ -85,11 +94,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select("user_id, display_name, username, email, azuracast_streamer_username")
       .not("azuracast_streamer_username", "is", null);
 
-    // Map AzuraCast streamers with optional profile data
+    // Map AzuraCast streamers with optional profile data, converting HHMM to minutes
     const streamers: Streamer[] = azuracastStreamers.map(streamer => {
       const profile = allProfiles?.find(
         p => p.azuracast_streamer_username === streamer.streamer_username
       );
+
+      // Convert schedule times from HHMM format to minutes
+      const convertedScheduleItems = (streamer.schedule_items || []).map(item => ({
+        ...item,
+        start_time: azuraCastTimeToMinutes(item.start_time),
+        end_time: azuraCastTimeToMinutes(item.end_time)
+      }));
 
       return {
         id: streamer.id,
@@ -97,11 +113,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         display_name: streamer.display_name,
         is_active: streamer.is_active,
         enforce_schedule: streamer.enforce_schedule,
-        schedule_items: streamer.schedule_items || [],
+        schedule_items: convertedScheduleItems,
         user_id: profile?.user_id,
         email: profile?.email,
         profile_display_name: profile?.display_name || undefined
       };
+    });
+
+    console.log("=== Converted Schedule Items (minutes) ===");
+    streamers.forEach(s => {
+      if (s.schedule_items && s.schedule_items.length > 0) {
+        console.log(`${s.streamer_username}:`, JSON.stringify(s.schedule_items, null, 2));
+      }
     });
 
     return res.status(200).json({

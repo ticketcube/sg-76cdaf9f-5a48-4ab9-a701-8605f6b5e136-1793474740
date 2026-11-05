@@ -1,16 +1,15 @@
 /**
  * Timezone utilities for Pacific Time (America/Los_Angeles) conversion
- * AzuraCast uses minutes-since-midnight (0-1439) in Pacific Time
+ * AzuraCast uses HHMM integer format (e.g., 1300 for 1:00 PM) in Pacific Time
  * 
  * IMPORTANT: All time inputs should be entered directly in Pacific Time.
- * No automatic timezone conversion is performed.
  */
 
 const PACIFIC_TZ = "America/Los_Angeles";
 
 /**
  * Convert time string (HH:MM) to minutes since midnight
- * Input is assumed to be in Pacific Time
+ * Used for internal state management
  */
 export function localTimeToPackificMinutes(timeStr: string): number {
   const [hours, minutes] = timeStr.split(":").map(Number);
@@ -19,12 +18,32 @@ export function localTimeToPackificMinutes(timeStr: string): number {
 
 /**
  * Convert minutes since midnight to time string (HH:MM)
- * Output is in Pacific Time
+ * Used for displaying in time inputs
  */
 export function pacificMinutesToLocalTime(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+}
+
+/**
+ * Convert minutes since midnight to AzuraCast HHMM format
+ * Example: 780 minutes (1:00 PM) → 1300
+ */
+export function minutesToAzuraCastTime(minutes: number): number {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return hours * 100 + mins;
+}
+
+/**
+ * Convert AzuraCast HHMM format to minutes since midnight
+ * Example: 1300 → 780 minutes (1:00 PM)
+ */
+export function azuraCastTimeToMinutes(hhmm: number): number {
+  const hours = Math.floor(hhmm / 100);
+  const minutes = hhmm % 100;
+  return hours * 60 + minutes;
 }
 
 /**

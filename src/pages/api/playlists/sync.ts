@@ -1,4 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { minutesToAzuraCastTime } from "@/lib/timezoneUtils";
+
+const AZURACAST_BASE_URL = process.env.NEXT_PUBLIC_AZURACAST_URL || "https://radio.onestowatch.live";
+const AZURACAST_API_KEY = process.env.AZURACAST_API_KEY;
+const STATION_ID = process.env.AZURACAST_STATION_ID || "2";
 
 interface ScheduleItem {
   start_time: number;
@@ -76,7 +81,14 @@ export default async function handler(
         avoid_duplicates: playlist.avoid_duplicates,
         include_in_requests: playlist.include_in_requests,
         include_in_on_demand: playlist.include_in_on_demand,
-        schedule_items: playlist.schedule_items
+        schedule_items: playlist.schedule_items?.map(item => ({
+          start_time: minutesToAzuraCastTime(item.start_time),
+          end_time: minutesToAzuraCastTime(item.end_time),
+          days: item.days,
+          start_date: item.start_date || null,
+          end_date: item.end_date || null,
+          loop_once: item.loop_once || false
+        })) || [];
       };
 
       if (existingPlaylist) {

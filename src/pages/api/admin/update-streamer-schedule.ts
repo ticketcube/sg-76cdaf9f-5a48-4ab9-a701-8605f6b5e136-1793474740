@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { minutesToAzuraCastTime } from "@/lib/timezoneUtils";
 
 const AZURACAST_BASE_URL = process.env.NEXT_PUBLIC_AZURACAST_URL || "https://radio.onestowatch.live";
 const AZURACAST_API_KEY = process.env.AZURACAST_API_KEY;
@@ -37,12 +38,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log("=== Updating Streamer Schedule ===");
     console.log("Streamer ID:", streamer_id);
     console.log("Enforce Schedule:", enforce_schedule);
-    console.log("Schedule Items:", JSON.stringify(schedule_items, null, 2));
+    console.log("Schedule Items (minutes):", JSON.stringify(schedule_items, null, 2));
+
+    // Convert minutes to HHMM format for AzuraCast
+    const azuracastScheduleItems = schedule_items.map(item => ({
+      ...item,
+      start_time: minutesToAzuraCastTime(item.start_time),
+      end_time: minutesToAzuraCastTime(item.end_time)
+    }));
+
+    console.log("Converted to HHMM format:", JSON.stringify(azuracastScheduleItems, null, 2));
 
     // Update streamer schedule in AzuraCast
     const payload = {
       enforce_schedule,
-      schedule_items
+      schedule_items: azuracastScheduleItems
     };
     
     console.log("Payload to AzuraCast:", JSON.stringify(payload, null, 2));
