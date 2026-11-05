@@ -35,22 +35,25 @@ async function fetchAzuraCastSchedule(): Promise<AzuraCastScheduleItem[]> {
   }
 }
 
-function parseAzuraCastTime(timeStr: string): { hours: number; minutes: number; time24: number } {
+function parseAzuraCastTime(timestamp: number): { hours: number; minutes: number; time24: number } {
   try {
-    // Parse the ISO string and format in Pacific Time
-    const date = new Date(timeStr);
-    const hours = parseInt(date.toLocaleString("en-US", { 
-      timeZone: "America/Los_Angeles", 
-      hour: "2-digit", 
-      hour12: false 
-    }));
-    const minutes = parseInt(date.toLocaleString("en-US", { 
-      timeZone: "America/Los_Angeles", 
-      minute: "2-digit" 
-    }));
+    // Create date from Unix timestamp and get Pacific Time components
+    const date = new Date(timestamp * 1000);
+    const ptString = date.toLocaleString("en-US", { 
+      timeZone: "America/Los_Angeles",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    });
+    
+    // Parse the formatted string "HH:MM"
+    const [hoursStr, minutesStr] = ptString.split(":");
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+    
     return { hours, minutes, time24: hours * 100 + minutes };
   } catch (error) {
-    console.error(`Failed to parse time "${timeStr}":`, error);
+    console.error(`Failed to parse timestamp ${timestamp}:`, error);
     return { hours: 0, minutes: 0, time24: 0 };
   }
 }
@@ -106,7 +109,7 @@ export default async function handler(
     const response = {
       today: todaySchedule.map(item => ({
         ...item,
-        parsed_time: parseAzuraCastTime(item.start)
+        parsed_time: parseAzuraCastTime(item.start_timestamp)
       })),
       week: groupedSchedule,
       current_day: today,
