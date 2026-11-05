@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { localTimeToPackificMinutes, pacificMinutesToLocalTime, formatDateForAzuraCast, getCurrentPacificTime } from "@/lib/timezoneUtils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ScheduleItem {
   start_time: number;
@@ -65,6 +66,7 @@ function timeToInt(time: string): number {
 }
 
 export default function DJsPage() {
+  const { isAdmin } = useAuth();
   const [streamers, setStreamers] = useState<StreamersResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingStreamer, setEditingStreamer] = useState<Streamer | null>(null);
@@ -259,7 +261,7 @@ export default function DJsPage() {
   };
 
   return (
-    <ProtectedRoute requireAdmin>
+    <ProtectedRoute requireStaff>
       <div className="page-container">
         <div className="max-w-7xl mx-auto section-spacing">
           <div className="mb-8">
@@ -314,7 +316,7 @@ export default function DJsPage() {
                       <TableHead>Status</TableHead>
                       <TableHead>Schedule</TableHead>
                       <TableHead>Enforce Times</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      {isAdmin && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -335,16 +337,18 @@ export default function DJsPage() {
                             {streamer.enforce_schedule ? "Enforced" : "Anytime"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openScheduleEditor(streamer)}
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit Schedule
-                          </Button>
-                        </TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openScheduleEditor(streamer)}
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit Schedule
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>

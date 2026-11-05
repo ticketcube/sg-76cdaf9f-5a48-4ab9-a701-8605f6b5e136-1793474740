@@ -194,7 +194,7 @@ export default function MediaPage() {
   });
 
   return (
-    <ProtectedRoute requireAdmin>
+    <ProtectedRoute requireStaff>
       <div className="container mx-auto py-8 px-4 max-w-7xl">
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">Media Library</h1>
