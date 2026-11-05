@@ -16,6 +16,10 @@ interface NowPlaying {
         name: string;
         listen_url: string;
     };
+    live?: {
+        is_live: boolean;
+        streamer_name?: string;
+    };
 }
 
 // Only allow https images/links in the banner query params.
@@ -136,6 +140,8 @@ export default function EmbedPlayer() {
     const toggleMute = () => setIsMuted(!isMuted);
 
     const song = nowPlaying?.now_playing.song;
+    const isLive = nowPlaying?.live?.is_live ?? false;
+    const streamerName = nowPlaying?.live?.streamer_name;
 
     return (
         // Top-aligned (not vertically centered) so the player never moves
@@ -182,12 +188,30 @@ export default function EmbedPlayer() {
                             </>
                         ) : song ? (
                             <>
-                                <div className="font-semibold text-foreground truncate text-sm">
-                                    {song.title || "Unknown Track"}
-                                </div>
-                                <div className="text-muted text-xs truncate">
-                                    {song.artist || "Unknown Artist"}
-                                </div>
+                                {isLive && streamerName ? (
+                                    <>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="px-2 py-0.5 bg-primary text-primary-foreground text-[10px] font-mono font-semibold rounded uppercase">
+                                                LIVE
+                                            </span>
+                                        </div>
+                                        <div className="font-semibold text-foreground truncate text-sm">
+                                            {streamerName}
+                                        </div>
+                                        <div className="text-muted text-xs truncate">
+                                            Live on OTW Radio
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="font-semibold text-foreground truncate text-sm">
+                                            {song.title || "Unknown Track"}
+                                        </div>
+                                        <div className="text-muted text-xs truncate">
+                                            {song.artist || "Unknown Artist"}
+                                        </div>
+                                    </>
+                                )}
                             </>
                         ) : (
                             <>

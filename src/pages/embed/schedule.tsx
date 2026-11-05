@@ -32,10 +32,22 @@ function formatTime(item: ScheduleItem): string {
         const h = t.hours === 0 ? 12 : t.hours > 12 ? t.hours - 12 : t.hours;
         return `${h}:${String(t.minutes).padStart(2, "0")} ${period}`;
     }
-    // Week items from /api/schedule have no parsed_time, so format the raw start in PT.
-    const d = item.start_timestamp ? new Date(item.start_timestamp * 1000) : new Date(item.start);
+    // Week items: use timestamp if available, otherwise parse start string
+    if (item.start_timestamp) {
+        const d = new Date(item.start_timestamp * 1000);
+        return d.toLocaleTimeString("en-US", { 
+            hour: "numeric", 
+            minute: "2-digit", 
+            timeZone: TZ 
+        });
+    }
+    const d = new Date(item.start);
     if (isNaN(d.getTime())) return "--:--";
-    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: TZ });
+    return d.toLocaleTimeString("en-US", { 
+        hour: "numeric", 
+        minute: "2-digit", 
+        timeZone: TZ 
+    });
 }
 
 function startMs(item: ScheduleItem): number {

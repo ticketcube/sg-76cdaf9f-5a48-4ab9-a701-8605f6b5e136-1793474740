@@ -37,10 +37,17 @@ async function fetchAzuraCastSchedule(): Promise<AzuraCastScheduleItem[]> {
 
 function parseAzuraCastTime(timeStr: string): { hours: number; minutes: number; time24: number } {
   try {
+    // Parse the ISO string and format in Pacific Time
     const date = new Date(timeStr);
-    const ptDate = new Date(date.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
-    const hours = ptDate.getHours();
-    const minutes = ptDate.getMinutes();
+    const hours = parseInt(date.toLocaleString("en-US", { 
+      timeZone: "America/Los_Angeles", 
+      hour: "2-digit", 
+      hour12: false 
+    }));
+    const minutes = parseInt(date.toLocaleString("en-US", { 
+      timeZone: "America/Los_Angeles", 
+      minute: "2-digit" 
+    }));
     return { hours, minutes, time24: hours * 100 + minutes };
   } catch (error) {
     console.error(`Failed to parse time "${timeStr}":`, error);
@@ -60,15 +67,19 @@ function groupScheduleByDay(items: AzuraCastScheduleItem[]) {
   };
 
   items.forEach(item => {
-    const date = new Date(item.start);
-    const dayName = date.toLocaleDateString("en-US", { weekday: "long", timeZone: "America/Los_Angeles" });
+    // Use start_timestamp to get the correct day in Pacific Time
+    const date = new Date(item.start_timestamp * 1000);
+    const dayName = date.toLocaleDateString("en-US", { 
+      weekday: "long", 
+      timeZone: "America/Los_Angeles" 
+    });
     if (days[dayName]) {
       days[dayName].push(item);
     }
   });
 
   Object.keys(days).forEach(day => {
-    days[day].sort((a, b) => parseAzuraCastTime(a.start).time24 - parseAzuraCastTime(b.start).time24);
+    days[day].sort((a, b) => a.start_timestamp - b.start_timestamp);
   });
 
   return days;
