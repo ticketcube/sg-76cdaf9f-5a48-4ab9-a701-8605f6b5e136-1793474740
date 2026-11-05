@@ -1,56 +1,30 @@
 /**
  * Timezone utilities for Pacific Time (America/Los_Angeles) conversion
- * AzuraCast uses Pacific Time for all schedule operations
+ * AzuraCast uses minutes-since-midnight (0-1439) in Pacific Time
+ * 
+ * IMPORTANT: All time inputs should be entered directly in Pacific Time.
+ * No automatic timezone conversion is performed.
  */
 
 const PACIFIC_TZ = "America/Los_Angeles";
 
 /**
- * Convert a local time string (HH:MM) to minutes since midnight in Pacific Time
+ * Convert time string (HH:MM) to minutes since midnight
+ * Input is assumed to be in Pacific Time
  */
 export function localTimeToPackificMinutes(timeStr: string): number {
   const [hours, minutes] = timeStr.split(":").map(Number);
-  
-  // Create a date with today's date and the specified time in the browser's timezone
-  const now = new Date();
-  const localDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
-  
-  // Format in Pacific Time to get the equivalent PT time
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: PACIFIC_TZ,
-    hour: "numeric",
-    minute: "numeric",
-    hour12: false
-  });
-  
-  const parts = formatter.formatToParts(localDate);
-  const ptHours = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
-  const ptMinutes = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
-  
-  return ptHours * 60 + ptMinutes;
+  return hours * 60 + minutes;
 }
 
 /**
- * Convert Pacific Time minutes to local time string (HH:MM)
+ * Convert minutes since midnight to time string (HH:MM)
+ * Output is in Pacific Time
  */
 export function pacificMinutesToLocalTime(minutes: number): string {
-  const ptHours = Math.floor(minutes / 60);
-  const ptMinutes = minutes % 60;
-  
-  // Create a date in Pacific Time
-  const now = new Date();
-  const ptDate = new Date(now.toLocaleString("en-US", { timeZone: PACIFIC_TZ }));
-  ptDate.setHours(ptHours, ptMinutes, 0, 0);
-  
-  // Get the PT date as ISO then parse to local
-  const ptIso = ptDate.toISOString();
-  const localDate = new Date(ptIso);
-  
-  // Return local time in HH:MM format
-  const localHours = localDate.getHours();
-  const localMinutes = localDate.getMinutes();
-  
-  return `${String(localHours).padStart(2, "0")}:${String(localMinutes).padStart(2, "0")}`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
 }
 
 /**

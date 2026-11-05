@@ -374,7 +374,7 @@ export default function DJsPage() {
                           <div className="flex-1 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <Label className="text-xs">Start Time (Your Local)</Label>
+                                <Label className="text-xs">Start Time (Pacific Time)</Label>
                                 <Input
                                   type="time"
                                   value={pacificMinutesToLocalTime(slot.start_time)}
@@ -383,11 +383,11 @@ export default function DJsPage() {
                                   })}
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  PT: {formatTime(slot.start_time)}
+                                  {formatTime(slot.start_time)} PT
                                 </p>
                               </div>
                               <div>
-                                <Label className="text-xs">End Time (Your Local)</Label>
+                                <Label className="text-xs">End Time (Pacific Time)</Label>
                                 <Input
                                   type="time"
                                   value={pacificMinutesToLocalTime(slot.end_time)}
@@ -396,7 +396,7 @@ export default function DJsPage() {
                                   })}
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  PT: {formatTime(slot.end_time)}
+                                  {formatTime(slot.end_time)} PT
                                 </p>
                               </div>
                             </div>
