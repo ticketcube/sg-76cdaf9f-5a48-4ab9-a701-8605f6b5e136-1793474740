@@ -70,6 +70,18 @@ export default async function handler(
     for (const playlist of playlists) {
       const existingPlaylist = existing.find((p: any) => p.name === playlist.name);
       
+      // Convert schedule times from minutes to HHMM format
+      const scheduleItems = playlist.schedule_items?.map(item => ({
+        start_time: minutesToAzuraCastTime(item.start_time),
+        end_time: minutesToAzuraCastTime(item.end_time),
+        days: item.days,
+        start_date: item.start_date || null,
+        end_date: item.end_date || null,
+        loop_once: item.loop_once || false
+      })) || [];
+
+      console.log(`Playlist "${playlist.name}" schedule (HHMM):`, JSON.stringify(scheduleItems, null, 2));
+
       const playlistData = {
         name: playlist.name,
         type: playlist.type,
@@ -81,14 +93,7 @@ export default async function handler(
         avoid_duplicates: playlist.avoid_duplicates,
         include_in_requests: playlist.include_in_requests,
         include_in_on_demand: playlist.include_in_on_demand,
-        schedule_items: playlist.schedule_items?.map(item => ({
-          start_time: minutesToAzuraCastTime(item.start_time),
-          end_time: minutesToAzuraCastTime(item.end_time),
-          days: item.days,
-          start_date: item.start_date || null,
-          end_date: item.end_date || null,
-          loop_once: item.loop_once || false
-        })) || [];
+        schedule_items: scheduleItems
       };
 
       if (existingPlaylist) {
