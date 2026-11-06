@@ -264,6 +264,7 @@ export default function EmbedPlayer() {
                     />
                 </div>
                 <div className="mt-3"><ScheduleCard /></div>
+                <div className="mt-6"><ListenerMap /></div>
                
             </div>
         </div>

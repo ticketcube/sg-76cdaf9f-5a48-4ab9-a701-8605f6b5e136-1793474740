@@ -1,20 +1,41 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { Radio } from "lucide-react";
+import { DOT_LAT_TOP, DOT_STEP, LAND_ROWS } from "@/lib/worldDots";
 
-interface ListenerLocation {
-  description: string;
-  location: {
-    lat: number;
-    lon: number;
-  };
-  listeners: number;
+interface ListenerSpot {
+  lat: number;
+  lon: number;
+  count: number;
+  label: string;
 }
 
 interface ListenersData {
   total: number;
-  unique: number;
-  current: ListenerLocation[];
+  located: number;
+  spots: ListenerSpot[];
+  source: "live" | "demo" | "unconfigured" | "error";
 }
+
+const COLS = LAND_ROWS[0].length;
+const ROWS = LAND_ROWS.length;
+const REFRESH_MS = 30000;
+
+const project = (lat: number, lon: number) => ({
+  x: (lon + 180) / DOT_STEP,
+  y: (DOT_LAT_TOP - lat) / DOT_STEP + 0.5,
+});
+
+const LandDots = memo(function LandDots() {
+  const dots: JSX.Element[] = [];
+  LAND_ROWS.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] === "1") {
+        dots.push(<circle key={`${x}-${y}`} cx={x + 0.5} cy={y + 0.5} r={0.3} />);
+      }
+    }
+  });
+  return <g className="fill-foreground/20">{dots}</g>;
+});
 
 export function ListenerMap() {
   const [data, setData] = useState<ListenersData | null>(null);
@@ -25,7 +46,19 @@ export function ListenerMap() {
         const response = await fetch("/api/analytics/listeners");
         if (response.ok) {
           const result = await response.json();
-          setData(result);
+          // Transform the API response to match our interface
+          const spots: ListenerSpot[] = result.current.map((loc: any) => ({
+            lat: loc.location.lat,
+            lon: loc.location.lon,
+            count: loc.listeners,
+            label: loc.description
+          }));
+          setData({
+            total: result.total,
+            located: spots.length,
+            spots,
+            source: "live"
+          });
         }
       } catch (error) {
         console.error("Failed to fetch listeners:", error);
@@ -33,132 +66,56 @@ export function ListenerMap() {
     };
 
     fetchListeners();
-    const interval = setInterval(fetchListeners, 30000);
+    const interval = setInterval(fetchListeners, REFRESH_MS);
     return () => clearInterval(interval);
   }, []);
 
-  // Convert lat/lon to SVG coordinates (Equirectangular projection)
-  const projectCoordinates = (lat: number, lon: number) => {
-    const x = ((lon + 180) / 360) * 800;
-    const y = ((90 - lat) / 180) * 400;
-    return { x, y };
-  };
+  const maxCount = Math.max(1, ...(data?.spots.map((s) => s.count) ?? [1]));
 
   return (
-    <div className="relative w-full h-[300px] bg-accent/30 rounded-lg overflow-hidden border border-muted/20">
+    <div className="w-full bg-accent/30 rounded-lg p-4 border border-muted/20">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Radio className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-foreground text-sm">Live Listeners</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+          <span className="font-mono text-sm text-foreground tabular-nums">
+            {data ? data.total.toLocaleString("en-US") : "--"}
+          </span>
+        </div>
+      </div>
+
       <svg
-        viewBox="0 0 800 400"
-        className="w-full h-full"
-        preserveAspectRatio="xMidYMid meet"
+        viewBox={`0 0 ${COLS} ${ROWS}`}
+        className="w-full h-auto block"
+        role="img"
+        aria-label={`${data?.total || 0} people listening to OTW Radio right now`}
       >
-        {/* World map outline (simplified continents) */}
-        <defs>
-          <linearGradient id="mapGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="hsl(var(--muted))" stopOpacity="0.1" />
-            <stop offset="100%" stopColor="hsl(var(--muted))" stopOpacity="0.3" />
-          </linearGradient>
-        </defs>
-
-        {/* Grid lines */}
-        <g stroke="hsl(var(--muted))" strokeWidth="0.5" opacity="0.2">
-          {/* Latitude lines */}
-          {Array.from({ length: 9 }, (_, i) => (
-            <line
-              key={`lat-${i}`}
-              x1="0"
-              y1={(i + 1) * 40}
-              x2="800"
-              y2={(i + 1) * 40}
-            />
-          ))}
-          {/* Longitude lines */}
-          {Array.from({ length: 11 }, (_, i) => (
-            <line
-              key={`lon-${i}`}
-              x1={(i + 1) * 66.67}
-              y1="0"
-              x2={(i + 1) * 66.67}
-              y2="400"
-            />
-          ))}
-        </g>
-
-        {/* Simplified continents outline */}
-        <g fill="url(#mapGradient)" stroke="hsl(var(--muted))" strokeWidth="1" opacity="0.4">
-          {/* North America */}
-          <path d="M 100 80 Q 150 60 200 80 L 220 120 L 180 160 L 140 150 L 100 120 Z" />
-          {/* South America */}
-          <path d="M 200 200 L 230 240 L 210 300 L 180 310 L 170 260 Z" />
-          {/* Europe */}
-          <path d="M 380 80 L 420 70 L 450 90 L 440 120 L 400 110 Z" />
-          {/* Africa */}
-          <path d="M 400 140 L 440 160 L 460 220 L 420 260 L 380 240 L 390 180 Z" />
-          {/* Asia */}
-          <path d="M 480 60 Q 580 50 650 80 L 680 120 L 640 160 L 550 150 L 500 120 Z" />
-          {/* Australia */}
-          <path d="M 620 260 L 680 250 L 700 280 L 680 300 L 640 290 Z" />
-        </g>
-
-        {/* Listener antenna markers */}
-        {data?.current.map((location, idx) => {
-          const { x, y } = projectCoordinates(
-            location.location.lat,
-            location.location.lon
-          );
-          const size = Math.min(Math.max(location.listeners * 3, 8), 20);
-
+        <LandDots />
+        {data?.spots.map((s, idx) => {
+          const { x, y } = project(s.lat, s.lon);
+          const r = 0.9 + 2.6 * Math.sqrt(s.count / maxCount);
           return (
-            <g key={idx} className="animate-pulse">
-              {/* Pulsing ring */}
-              <circle
-                cx={x}
-                cy={y}
-                r={size + 8}
-                fill="none"
-                stroke="hsl(var(--primary))"
-                strokeWidth="1"
-                opacity="0.3"
-              >
+            <g key={`${s.lat},${s.lon}-${idx}`}>
+              <circle cx={x} cy={y} r={r} className="fill-primary/25">
                 <animate
                   attributeName="r"
-                  from={size}
-                  to={size + 12}
-                  dur="2s"
+                  values={`${r};${r * 1.8};${r}`}
+                  dur="3s"
                   repeatCount="indefinite"
                 />
                 <animate
                   attributeName="opacity"
-                  from="0.6"
-                  to="0"
-                  dur="2s"
+                  values="0.6;0;0.6"
+                  dur="3s"
                   repeatCount="indefinite"
                 />
               </circle>
-
-              {/* Antenna dot */}
-              <circle
-                cx={x}
-                cy={y}
-                r={size / 2}
-                fill="hsl(var(--primary))"
-                opacity="0.8"
-              />
-
-              {/* Antenna signal waves */}
-              <path
-                d={`M ${x - size} ${y - size} Q ${x} ${y - size * 2} ${x + size} ${y - size}`}
-                fill="none"
-                stroke="hsl(var(--primary))"
-                strokeWidth="1.5"
-                opacity="0.6"
-              />
-              <path
-                d={`M ${x - size * 1.5} ${y - size * 1.5} Q ${x} ${y - size * 2.5} ${x + size * 1.5} ${y - size * 1.5}`}
-                fill="none"
-                stroke="hsl(var(--primary))"
-                strokeWidth="1"
-                opacity="0.4"
-              />
+              <circle cx={x} cy={y} r={r * 0.55} className="fill-primary">
+                <title>{`${s.label}: ${s.count} listening`}</title>
+              </circle>
             </g>
           );
         })}
