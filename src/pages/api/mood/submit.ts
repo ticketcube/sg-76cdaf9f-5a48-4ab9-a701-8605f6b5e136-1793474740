@@ -49,7 +49,7 @@ export default async function handler(
     .limit(1)
     .single();
 
-  if (recentMood) {
+  if (recentMood && recentMood.created_at) {
     const lastSubmission = new Date(recentMood.created_at).getTime();
     const now = Date.now();
     const timeSinceLastSubmission = (now - lastSubmission) / 1000;
