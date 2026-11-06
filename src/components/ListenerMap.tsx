@@ -69,80 +69,63 @@ export function ListenerMap() {
 
   const maxCount = Math.max(1, ...(data?.spots.map((s) => s.count) ?? [1]));
 
+  // Convert spots to city list for mood overlay
+  const cities = data?.spots.map(spot => ({
+    city: spot.label,
+    lat: spot.lat,
+    lng: spot.lon
+  })) || [];
+
   return (
     <div className="relative w-full h-full bg-background">
       <svg
         ref={svgRef}
         className="w-full h-full"
-        viewBox={`0 0 ${mapSize.width} ${mapSize.height}`}
+        viewBox={`0 0 ${COLS} ${ROWS}`}
         preserveAspectRatio="xMidYMid meet"
       >
-        {/* World map base */}
-        <g>
-          {worldDots.map((dot, i) => (
-            <circle
-              key={i}
-              cx={dot.x}
-              cy={dot.y}
-              r={1.5}
-              fill="hsl(var(--muted))"
-              opacity={0.3}
-            />
-          ))}
-        </g>
+        <LandDots />
 
-        {/* Listener dots */}
-        <g>
-          {listeners.map((listener) => {
-            const x = ((listener.lng + 180) / 360) * mapSize.width;
-            const latRad = (listener.lat * Math.PI) / 180;
-            const mercN = Math.log(Math.tan(Math.PI / 4 + latRad / 2));
-            const y = (mapSize.height / 2) - (mapSize.width * mercN) / (2 * Math.PI);
+        {data?.spots.map((spot, idx) => {
+          const { x, y } = project(spot.lat, spot.lon);
+          const r = 0.4 + (0.6 * spot.count) / maxCount;
+          return (
+            <g key={idx}>
+              <circle
+                cx={x}
+                cy={y}
+                r={r * 1.8}
+                className="fill-primary/20"
+              />
+              <circle cx={x} cy={y} r={r} className="fill-primary" />
+            </g>
+          );
+        })}
 
-            return (
-              <g key={listener.id}>
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={3}
-                  fill="hsl(var(--primary))"
-                  opacity={0.8}
-                />
-              </g>
-            );
-          })}
-        </g>
-
-        {/* Overlay layers - mood dots + show pins */}
-        <MapOverlayManager width={mapSize.width} height={mapSize.height}>
-          <MoodMapOverlay 
-            width={mapSize.width} 
-            height={mapSize.height}
-            cities={Object.values(
-              listeners.reduce((acc, l) => {
-                if (!acc[l.city]) {
-                  acc[l.city] = { city: l.city, lat: l.lat, lng: l.lng };
-                }
-                return acc;
-              }, {} as Record<string, { city: string; lat: number; lng: number }>)
-            )}
-          />
-          <ShowsMapOverlay 
-            width={mapSize.width} 
-            height={mapSize.height}
-          />
-        </MapOverlayManager>
+        {/* Overlay layers positioned absolutely over the map */}
       </svg>
 
-      {/* Stats panel */}
-      <div className="absolute bottom-4 left-4 bg-background/80 backdrop-blur-sm rounded-lg p-4 border">
-        <div className="text-sm">
-          <div className="font-semibold mb-1">Live Listeners</div>
-          <div className="text-2xl font-bold text-primary">{listeners.length}</div>
-          <div className="text-xs text-muted mt-1">
-            {Object.keys(listeners.reduce((acc, l) => ({ ...acc, [l.city]: true }), {})).length} cities
-          </div>
-        </div>
+      {/* Overlay manager renders outside SVG for proper absolute positioning */}
+      <div className="absolute inset-0 pointer-events-none">
+        <MapOverlayManager width={COLS} height={ROWS}>
+          <MoodMapOverlay 
+            width={COLS} 
+            height={ROWS}
+            cities={cities}
+          />
+          <ShowsMapOverlay 
+            width={COLS} 
+            height={ROWS}
+          />
+        </MapOverlayManager>
+      </div>
+
+      <div className="absolute top-2 left-2 flex items-center gap-2 rounded-md bg-background/80 px-3 py-1.5 text-sm backdrop-blur-sm">
+        <Radio className="h-4 w-4 animate-pulse text-primary" />
+        <span className="font-semibold">{data?.total ?? 0}</span>
+        <span className="text-muted-foreground">
+          {data?.located ?? 0} located
+        </span>
       </div>
     </div>
   );
