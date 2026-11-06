@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Radio } from "lucide-react";
-import { WORLD_DOTS, DOT_LAT_TOP, DOT_STEP } from "@/lib/worldDots";
+import { WORLD_DOTS } from "@/lib/worldDots";
 
 interface ListenerSpot {
   lat: number;
@@ -84,7 +84,7 @@ export function ListenerMap() {
       {/* Map */}
       <div className="relative w-full bg-background/50 rounded-lg border border-muted/20 overflow-hidden" style={{ aspectRatio: '2/1' }}>
         <svg
-          viewBox="0 0 360 180"
+          viewBox="0 0 360 139"
           preserveAspectRatio="xMidYMid meet"
           className="w-full h-full"
           role="img"
@@ -95,42 +95,31 @@ export function ListenerMap() {
           }
         >
           {/* World land mask as dot matrix */}
-          {WORLD_DOTS.map((row, rowIndex) => {
-            const lat = DOT_LAT_TOP - rowIndex * DOT_STEP;
-            const y = 90 - lat; // Convert lat to y coordinate (0 at north pole, 180 at south)
-            
-            return Array.from(row).map((cell, colIndex) => {
-              if (cell !== "1") return null;
-              
-              const lon = -180 + colIndex * DOT_STEP;
-              const x = lon + 180; // Convert lon to x coordinate (0 at -180, 360 at +180)
-              
-              return (
+          {WORLD_DOTS.map((row, y) =>
+            Array.from(row).map((cell, x) =>
+              cell === "1" ? (
                 <circle
-                  key={`${colIndex}-${rowIndex}`}
+                  key={`${x}-${y}`}
                   cx={x}
                   cy={y}
-                  r="0.4"
+                  r="0.3"
                   className="fill-foreground/20"
                 />
-              );
-            });
-          })}
+              ) : null
+            )
+          )}
 
-          {/* Listener spots */}
+          {/* Listener spots - crimson antenna markers */}
           {data?.spots.map((s, idx) => {
-            // Equirectangular projection
-            const x = s.lon + 180;
+            const x = (s.lon + 180) * 2;
             const y = 90 - s.lat;
-            
-            // Size by listener count (smaller base size)
-            const baseR = 0.8;
-            const r = baseR + 1.2 * Math.sqrt(s.count / maxCount);
+            const baseR = 1.2;
+            const r = baseR + 1.5 * Math.sqrt(s.count / maxCount);
             
             return (
               <g key={`${s.lat},${s.lon}-${idx}`}>
                 {/* Pulsing outer glow */}
-                <circle cx={x} cy={y} r={r * 2.5} className="fill-foreground/10">
+                <circle cx={x} cy={y} r={r * 2.5} className="fill-primary/20">
                   <animate
                     attributeName="r"
                     values={`${r * 2.5};${r * 3.5};${r * 2.5}`}
@@ -139,13 +128,13 @@ export function ListenerMap() {
                   />
                   <animate
                     attributeName="opacity"
-                    values="0.3;0;0.3"
+                    values="0.4;0;0.4"
                     dur="3s"
                     repeatCount="indefinite"
                   />
                 </circle>
-                {/* Core dot */}
-                <circle cx={x} cy={y} r={r} className="fill-foreground/90">
+                {/* Core crimson dot */}
+                <circle cx={x} cy={y} r={r} className="fill-primary">
                   <title>{s.label}</title>
                 </circle>
               </g>
