@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Radio } from "lucide-react";
-import { WORLD_DOTS } from "@/lib/worldDots";
+import { WORLD_DOTS, DOT_LAT_TOP, DOT_STEP } from "@/lib/worldDots";
 
 interface ListenerSpot {
   lat: number;
@@ -18,12 +18,6 @@ interface ListenersData {
 
 const REFRESH_MS = 30000;
 
-// Equirectangular projection
-const project = (lat: number, lon: number) => ({
-  x: ((lon + 180) / 360) * 100,
-  y: ((90 - lat) / 180) * 100,
-});
-
 export function ListenerMap() {
   const [data, setData] = useState<ListenersData | null>(null);
   const [prevTotal, setPrevTotal] = useState(0);
@@ -36,7 +30,6 @@ export function ListenerMap() {
         if (response.ok) {
           const result = await response.json();
           
-          // Show tick animation when count changes
           if (result.total !== prevTotal && prevTotal > 0) {
             setShowTick(true);
             setTimeout(() => setShowTick(false), 500);
@@ -102,44 +95,57 @@ export function ListenerMap() {
           }
         >
           {/* World land mask as dot matrix */}
-          {WORLD_DOTS.map((row: string, y: number) =>
-            Array.from(row).map((cell: string, x: number) =>
-              cell === "1" ? (
+          {WORLD_DOTS.map((row, rowIndex) => {
+            const lat = DOT_LAT_TOP - rowIndex * DOT_STEP;
+            const y = 90 - lat; // Convert lat to y coordinate (0 at north pole, 180 at south)
+            
+            return Array.from(row).map((cell, colIndex) => {
+              if (cell !== "1") return null;
+              
+              const lon = -180 + colIndex * DOT_STEP;
+              const x = lon + 180; // Convert lon to x coordinate (0 at -180, 360 at +180)
+              
+              return (
                 <circle
-                  key={`${x}-${y}`}
+                  key={`${colIndex}-${rowIndex}`}
                   cx={x}
                   cy={y}
-                  r="0.3"
+                  r="0.4"
                   className="fill-foreground/20"
                 />
-              ) : null
-            )
-          )}
+              );
+            });
+          })}
 
           {/* Listener spots */}
           {data?.spots.map((s, idx) => {
-            const { x, y } = project(s.lat, s.lon);
-            // Soft white glow sized by listener count
-            const r = 0.8 + 1.5 * Math.sqrt(s.count / maxCount);
+            // Equirectangular projection
+            const x = s.lon + 180;
+            const y = 90 - s.lat;
+            
+            // Size by listener count (smaller base size)
+            const baseR = 0.8;
+            const r = baseR + 1.2 * Math.sqrt(s.count / maxCount);
+            
             return (
               <g key={`${s.lat},${s.lon}-${idx}`}>
                 {/* Pulsing outer glow */}
-                <circle cx={x * 3.6} cy={y * 1.8} r={r * 2.5} className="fill-foreground/10">
+                <circle cx={x} cy={y} r={r * 2.5} className="fill-foreground/10">
                   <animate
                     attributeName="r"
-                    values={`${r * 2.5};${r * 4};${r * 2.5}`}
+                    values={`${r * 2.5};${r * 3.5};${r * 2.5}`}
                     dur="3s"
                     repeatCount="indefinite"
                   />
                   <animate
                     attributeName="opacity"
-                    values="0.4;0;0.4"
+                    values="0.3;0;0.3"
                     dur="3s"
                     repeatCount="indefinite"
                   />
                 </circle>
                 {/* Core dot */}
-                <circle cx={x * 3.6} cy={y * 1.8} r={r} className="fill-foreground/90">
+                <circle cx={x} cy={y} r={r} className="fill-foreground/90">
                   <title>{s.label}</title>
                 </circle>
               </g>
