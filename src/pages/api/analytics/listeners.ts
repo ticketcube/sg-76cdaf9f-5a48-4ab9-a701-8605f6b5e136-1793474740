@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createPagesServerClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@supabase/supabase-js";
 
 interface ListenerLocation {
   description: string;
@@ -25,12 +25,22 @@ export default async function handler(
   }
 
   // Admin-only authentication check
-  const supabase = createPagesServerClient({ req, res });
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
-  if (!session) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(500).json({ error: "Server configuration error" });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
@@ -38,7 +48,7 @@ export default async function handler(
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   if (!profile || profile.role !== "admin") {
