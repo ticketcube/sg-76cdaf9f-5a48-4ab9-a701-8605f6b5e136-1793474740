@@ -7,10 +7,21 @@ export default async function handler(
 ) {
   const supabase = createClient();
 
-  // Verify admin role
+  // Verify admin role via profiles table
   const { data: { user } } = await supabase.auth.getUser();
   
-  if (!user || user.user_metadata?.role !== "admin") {
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  // Check if user is admin via profiles table
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.is_admin) {
     return res.status(403).json({ error: "Forbidden: Admin access required" });
   }
 
