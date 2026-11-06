@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createClient } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 
 interface ListenerLocation {
   description: string;
@@ -33,9 +33,21 @@ export default async function handler(
     }
 
     const token = authHeader.substring(7);
-    const supabase = createClient();
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    // Create server-side Supabase client with the user's token
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      }
+    );
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return res.status(401).json({ error: "Unauthorized - admin access required" });
     }
