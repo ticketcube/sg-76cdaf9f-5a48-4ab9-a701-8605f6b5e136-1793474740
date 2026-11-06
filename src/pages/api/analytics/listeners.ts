@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { createClient } from "@/integrations/supabase/client";
 
 interface ListenerLocation {
   description: string;
@@ -15,6 +16,7 @@ interface ListenersResponse {
   current: ListenerLocation[];
 }
 
+// ADMIN-ONLY: This endpoint exposes exact coordinates for internal analytics
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ListenersResponse | { error: string }>
@@ -24,6 +26,32 @@ export default async function handler(
   }
 
   try {
+    // Verify admin authorization
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized - admin access required" });
+    }
+
+    const token = authHeader.substring(7);
+    const supabase = createClient();
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return res.status(401).json({ error: "Unauthorized - admin access required" });
+    }
+
+    // Check if user is admin
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden - admin access required" });
+    }
+
+    // Fetch exact listener data from AzuraCast
     const azuracastUrl = process.env.AZURACAST_URL;
     const stationId = process.env.AZURACAST_STATION_ID;
     const apiKey = process.env.AZURACAST_API_KEY;
@@ -46,6 +74,7 @@ export default async function handler(
 
     const data = await response.json();
     
+    // Group by exact location for admin view
     const locationMap = new Map<string, { location: { lat: number; lon: number }; listeners: number }>();
     
     if (Array.isArray(data)) {
@@ -80,10 +109,10 @@ export default async function handler(
       current
     };
 
-    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
     res.status(200).json(result);
   } catch (error) {
-    console.error("Failed to fetch listeners:", error);
+    console.error("Failed to fetch admin listeners:", error);
     res.status(500).json({ error: "Failed to fetch listener data" });
   }
 }
