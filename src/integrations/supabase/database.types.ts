@@ -1064,6 +1064,27 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_flags: {
+        Row: {
+          enabled: boolean
+          flag_name: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          flag_name: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          flag_name?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       financial_accounts: {
         Row: {
           account_name: string
@@ -2060,6 +2081,39 @@ export type Database = {
             referencedColumns: ["cube_id"]
           },
         ]
+      }
+      mood_changes: {
+        Row: {
+          city: string
+          created_at: string | null
+          id: string
+          mood_value: number
+          song_artist: string | null
+          song_id: string | null
+          song_title: string | null
+          user_id: string | null
+        }
+        Insert: {
+          city: string
+          created_at?: string | null
+          id?: string
+          mood_value: number
+          song_artist?: string | null
+          song_id?: string | null
+          song_title?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          city?: string
+          created_at?: string | null
+          id?: string
+          mood_value?: number
+          song_artist?: string | null
+          song_id?: string | null
+          song_title?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       oauth_authorizations: {
         Row: {
@@ -3778,6 +3832,48 @@ export type Database = {
         }
         Relationships: []
       }
+      upcoming_shows: {
+        Row: {
+          artist_name: string
+          city: string
+          created_at: string | null
+          id: string
+          image_url: string | null
+          lat: number
+          lng: number
+          show_date: string
+          ticket_status: string | null
+          ticket_url: string
+          venue_name: string
+        }
+        Insert: {
+          artist_name: string
+          city: string
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          lat: number
+          lng: number
+          show_date: string
+          ticket_status?: string | null
+          ticket_url: string
+          venue_name: string
+        }
+        Update: {
+          artist_name?: string
+          city?: string
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          lat?: number
+          lng?: number
+          show_date?: string
+          ticket_status?: string | null
+          ticket_url?: string
+          venue_name?: string
+        }
+        Relationships: []
+      }
       user_points: {
         Row: {
           id: string
@@ -4023,6 +4119,15 @@ export type Database = {
           p_prefix?: string
         }
         Returns: string
+      }
+      get_city_mood_aggregates: {
+        Args: never
+        Returns: {
+          avg_mood: number
+          city: string
+          last_update: string
+          listener_count: number
+        }[]
       }
       migrate_artists_to_clients: { Args: never; Returns: undefined }
     }
