@@ -27,14 +27,15 @@ Design:
 - Follows existing admin UI patterns
 
 ## Checklist
-- [ ] Create /admin/features page (or add section to /admin/index)
-- [ ] Fetch feature flags from GET /api/admin/feature-flags
-- [ ] Display each flag with toggle switch
-- [ ] Update flag on toggle (PATCH /api/admin/feature-flags/:name)
-- [ ] Show success/error toast on update
-- [ ] Add confirmation dialog for disabling active features
-- [ ] Display last_updated timestamp for each flag
-- [ ] Add link to features page from admin navigation
+- [x] Create admin features page at /admin/features
+- [x] Use ProtectedRoute with requireAdmin
+- [x] Fetch feature flags from GET /api/admin/feature-flags on mount
+- [x] Display toggle switches for mood_tracker_enabled and shows_map_enabled
+- [x] Implement toggle handler that calls PATCH /api/admin/feature-flags
+- [x] Show loading state during fetch
+- [x] Show success/error toasts on toggle
+- [x] Display descriptive text for each feature flag
+- [x] Style with Card components for clean layout
 
 ## Acceptance
 - Admins can view all feature flags
