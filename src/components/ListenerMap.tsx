@@ -102,8 +102,8 @@ export function ListenerMap() {
           }
         >
           {/* World land mask as dot matrix */}
-          {WORLD_DOTS.map((row, y) =>
-            Array.from(row).map((cell, x) =>
+          {WORLD_DOTS.map((row: string, y: number) =>
+            Array.from(row).map((cell: string, x: number) =>
               cell === "1" ? (
                 <circle
                   key={`${x}-${y}`}
