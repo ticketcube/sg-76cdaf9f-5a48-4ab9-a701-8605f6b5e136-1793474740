@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useRouter } from "next/router";
 import { ScheduleCard } from "@/pages/embed/schedule";
+import { ListenerMap } from "@/components/ListenerMap";
 
 interface NowPlaying {
     now_playing: {
