@@ -43,20 +43,13 @@ export function ListenerMap() {
   useEffect(() => {
     const fetchListeners = async () => {
       try {
-        const response = await fetch("/api/analytics/listeners");
+        const response = await fetch("/api/listeners-map");
         if (response.ok) {
           const result = await response.json();
-          // Transform the API response to match our interface
-          const spots: ListenerSpot[] = result.current.map((loc: any) => ({
-            lat: loc.location.lat,
-            lon: loc.location.lon,
-            count: loc.listeners,
-            label: loc.description
-          }));
           setData({
             total: result.total,
-            located: spots.length,
-            spots,
+            located: result.located,
+            spots: result.spots,
             source: "live"
           });
         }
