@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Layout } from "@/components/Layout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -73,7 +72,6 @@ export default function FeaturesPage() {
 
   return (
     <ProtectedRoute requireAdmin>
-      <Layout>
         <div className="container max-w-4xl mx-auto py-8 px-4">
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Feature Flags</h1>
@@ -132,7 +130,6 @@ export default function FeaturesPage() {
             </div>
           )}
         </div>
-      </Layout>
     </ProtectedRoute>
   );
 }
