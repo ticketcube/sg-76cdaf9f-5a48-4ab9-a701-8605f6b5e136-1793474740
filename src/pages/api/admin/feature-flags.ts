@@ -14,11 +14,11 @@ export default async function handler(
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  // Check if user is admin via profiles table
+  // Check if user is admin via user_profiles table
   const { data: profile } = await supabase
-    .from("profiles")
+    .from("user_profiles")
     .select("is_admin")
-    .eq("id", user.id)
+    .eq("user_id", user.id)
     .single();
 
   if (!profile?.is_admin) {
