@@ -204,7 +204,11 @@ export function AudioPlayer() {
       </div>
 
       <audio ref={audioRef} src={streamUrl} />
-      <MoodTap nowPlaying={nowPlaying} />
+      <MoodTap nowPlaying={nowPlaying?.now_playing?.song ? {
+        title: nowPlaying.now_playing.song.title,
+        artist: nowPlaying.now_playing.song.artist,
+        id: undefined
+      } : undefined} />
     </div>
   );
 }
