@@ -30,15 +30,15 @@ Design:
 - **Hidden entirely when feature flag is off** (no placeholder, no UI space)
 
 ## Checklist
-- [ ] Create src/components/MoodTap.tsx with 5 emoji buttons
-- [ ] Check feature flag on component mount (GET /api/admin/feature-flags)
-- [ ] Return null if mood_tracker_enabled = false (no render)
-- [ ] Add tap animation (scale + opacity transition)
-- [ ] Integrate with POST /api/mood/submit endpoint
-- [ ] Show success toast on submission
-- [ ] Show cooldown message if rate limited (client tracks last submission time)
-- [ ] Fetch current now-playing data before submission (song context)
-- [ ] Add MoodTap to AudioPlayer as conditional overlay (renders below controls)
+- [x] Create src/components/MoodTap.tsx with 5 emoji buttons
+- [x] Check feature flag on component mount (GET /api/admin/feature-flags)
+- [x] Return null if mood_tracker_enabled = false (no render)
+- [x] Add tap animation (scale + opacity transition)
+- [x] Integrate with POST /api/mood/submit endpoint
+- [x] Show success toast on submission
+- [x] Show cooldown message if rate limited (client tracks last submission time)
+- [x] Fetch current now-playing data before submission (song context)
+- [x] Add MoodTap to AudioPlayer as conditional overlay (renders below controls)
 
 ## Acceptance
 - Component does not render when feature flag is disabled

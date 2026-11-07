@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Radio, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { MoodTap } from "./MoodTap";
 
 interface NowPlayingData {
   now_playing?: {
@@ -203,6 +204,7 @@ export function AudioPlayer() {
       </div>
 
       <audio ref={audioRef} src={streamUrl} />
+      <MoodTap nowPlaying={nowPlaying} />
     </div>
   );
 }

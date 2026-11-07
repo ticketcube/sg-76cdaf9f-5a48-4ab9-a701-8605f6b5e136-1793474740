@@ -44,19 +44,19 @@ Color Spectrum:
 - 81-100: #DC2626 (Bright Red)
 
 ## Checklist
-- [ ] Create src/components/map/MapOverlayManager.tsx (coordinate multiple overlay layers)
-- [ ] Create src/components/map/MoodMapOverlay.tsx (mood dots layer)
-- [ ] Create src/components/map/CityMoodIndicator.tsx (individual mood dot component)
-- [ ] MapOverlayManager accepts children, manages shared map state (dimensions, projection)
-- [ ] Check mood_tracker_enabled flag in MoodMapOverlay, return null if disabled
-- [ ] Implement mood-to-color mapping function
-- [ ] Add pulse animation (scale 1.0 → 1.3 → 1.0 over 600ms with glow)
-- [ ] Fetch city mood aggregates from GET /api/mood/city-aggregates
-- [ ] Poll for mood updates every 10 seconds
-- [ ] Smooth color interpolation with CSS transitions
-- [ ] Position mood dots at city coordinates (match ListenerMap positioning)
-- [ ] Ensure proper z-index layering (mood layer above listeners, below shows)
-- [ ] Integrate MapOverlayManager into pages that render ListenerMap
+- [x] Create src/components/map/MapOverlayManager.tsx (coordinate multiple overlay layers)
+- [x] Create src/components/map/MoodMapOverlay.tsx (mood dots layer)
+- [ ] Create src/components/map/CityMoodIndicator.tsx (individual mood dot component - integrated into MoodMapOverlay)
+- [x] MapOverlayManager accepts children, manages shared map state (dimensions, projection)
+- [x] Check mood_tracker_enabled flag in MoodMapOverlay, return null if disabled
+- [x] Implement mood-to-color mapping function
+- [x] Add pulse animation (scale 1.0 → 1.3 → 1.0 over 600ms with glow)
+- [x] Fetch city mood aggregates from GET /api/mood/city-aggregates
+- [x] Poll for mood updates every 10 seconds
+- [x] Smooth color interpolation with CSS transitions
+- [x] Position mood dots at city coordinates (match ListenerMap positioning)
+- [x] Ensure proper z-index layering (mood layer above listeners, below shows)
+- [x] Integrate MapOverlayManager into pages that render ListenerMap
 
 ## Acceptance
 - MapOverlayManager successfully coordinates multiple overlay layers

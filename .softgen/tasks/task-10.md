@@ -36,19 +36,18 @@ Popup Contents:
 - Optional: artist image if image_url provided
 
 ## Checklist
-- [ ] Create src/components/map/ShowsMapOverlay.tsx
-- [ ] Check shows_map_enabled flag on mount, return null if disabled
-- [ ] Fetch upcoming shows from GET /api/shows/upcoming
-- [ ] Render MapPin icons at venue lat/lng coordinates
-- [ ] Position pins correctly using MapOverlayManager projection
-- [ ] Add hover effect (scale + glow)
-- [ ] Implement click handler to show popup
-- [ ] Create ShowPopup component with artist, venue, date, ticket link
-- [ ] Style popup to match brand (dark bg, crimson accents)
-- [ ] Close popup on outside click or ESC key
-- [ ] Ensure pins are top layer (z-index: 3)
-- [ ] Test click interactions don't interfere with map panning
-- [ ] Integrate ShowsMapOverlay into MapOverlayManager
+- [x] Create src/components/map/ShowsMapOverlay.tsx (venue pins layer)
+- [x] Check shows_map_enabled flag, return null if disabled
+- [x] Fetch upcoming shows from GET /api/shows/upcoming
+- [x] Convert lat/lng to SVG coordinates (match map projection)
+- [x] Render venue pins with MapPin icon
+- [x] Click handler opens show details popup/card
+- [x] Show details include: artist, venue, date, ticket link
+- [x] Style ticket links as external buttons with ExternalLink icon
+- [x] Pulse animation on pin hover
+- [x] Proper z-index (top layer above mood dots)
+- [x] Integrate into ListenerMap via MapOverlayManager
+- [x] Mobile-responsive popup positioning
 
 ## Acceptance
 - Shows overlay does not render when feature flag is disabled

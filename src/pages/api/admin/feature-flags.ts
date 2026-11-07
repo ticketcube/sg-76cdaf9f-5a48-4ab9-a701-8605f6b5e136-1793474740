@@ -7,28 +7,25 @@ export default async function handler(
 ) {
   const supabase = createClient();
 
-  // TEMPORARY: Bypassing admin check for debugging
-  // TODO: Re-enable once we confirm the UI works
+  // Auth check - matches pattern from live-djs.ts
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
   
-  /*
-  // Verify admin role via profiles table
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
+  if (authError || !user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  // Check if user is admin via user_profiles table
+  // Check admin status from user_profiles table
   const { data: profile } = await supabase
     .from("user_profiles")
     .select("is_admin")
     .eq("user_id", user.id)
     .single();
 
-  if (!profile?.is_admin) {
-    return res.status(403).json({ error: "Forbidden: Admin access required" });
+  const isAdmin = profile?.is_admin === true;
+
+  if (!isAdmin) {
+    return res.status(403).json({ error: "Admin access required" });
   }
-  */
 
   if (req.method === "GET") {
     // Get all feature flags
