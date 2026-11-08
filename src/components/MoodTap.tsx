@@ -30,16 +30,19 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
   const [tappedEmoji, setTappedEmoji] = useState<string | null>(null);
   const [lastSubmit, setLastSubmit] = useState<number>(0);
   const [cooldown, setCooldown] = useState<number>(0);
+  const [supabase] = useState(() => createClient());
 
   useEffect(() => {
     const init = async () => {
       // Ensure user has a session (anonymous or authenticated)
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
         // Create anonymous session for first-time visitors
-        await supabase.auth.signInAnonymously();
+        const { error } = await supabase.auth.signInAnonymously();
+        if (error) {
+          console.error("Failed to create anonymous session:", error);
+        }
       }
 
       // Check if mood tracker is enabled
@@ -54,7 +57,7 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
     };
 
     init();
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     // Cooldown timer
@@ -81,9 +84,19 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
     setTimeout(() => setTappedEmoji(null), 600);
 
     try {
+      // Get current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error("No active session. Please refresh the page.");
+      }
+
       const response = await fetch("/api/mood/submit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({
           mood_value: mood.value,
           song_title: nowPlaying?.title || "Unknown",

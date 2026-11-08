@@ -36,7 +36,21 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  // Get the access token from Authorization header
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.replace("Bearer ", "");
+
+  if (!token) {
+    return res.status(401).json({ error: "No authorization token provided" });
+  }
+
+  // Create Supabase client and set the session
   const supabase = createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Invalid or expired session" });
+  }
 
   // Check feature flag
   const { data: flags } = await supabase
@@ -47,13 +61,6 @@ export default async function handler(
 
   if (!flags?.enabled) {
     return res.status(503).json({ error: "Mood tracker is currently disabled" });
-  }
-
-  // Get current user (could be anonymous or authenticated)
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    return res.status(401).json({ error: "Authentication required. Please refresh the page." });
   }
 
   const { mood_value, song_title, song_artist, song_id } = req.body;
