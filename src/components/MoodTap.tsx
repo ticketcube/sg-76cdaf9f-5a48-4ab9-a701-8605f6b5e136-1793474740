@@ -84,37 +84,66 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
     setTimeout(() => setTappedEmoji(null), 600);
 
     try {
-      // Get current session token
-      const { data: { session } } = await supabase.auth.getSession();
+      // Ensure we have an active session
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (!session?.access_token) {
+      if (!user) {
         throw new Error("No active session. Please refresh the page.");
       }
 
-      const response = await fetch("/api/mood/submit", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
+      // Check feature flag (client-side double-check)
+      const { data: flags } = await supabase
+        .from("feature_flags")
+        .select("enabled")
+        .eq("flag_name", "mood_tracker_enabled")
+        .single();
+
+      if (!flags?.enabled) {
+        toast.error("Mood tracker is currently disabled");
+        return;
+      }
+
+      // Check rate limit in database
+      const { data: recentMood } = await supabase
+        .from("mood_changes")
+        .select("created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (recentMood?.created_at) {
+        const lastSubmission = new Date(recentMood.created_at).getTime();
+        const nowMs = Date.now();
+        const timeSinceLastSubmission = (nowMs - lastSubmission) / 1000;
+
+        if (timeSinceLastSubmission < 15) {
+          const remainingTime = Math.ceil(15 - timeSinceLastSubmission);
+          setCooldown(remainingTime);
+          toast.error(`Wait ${remainingTime}s before changing mood again`);
+          return;
+        }
+      }
+
+      // Get city from IP (server-side geolocation)
+      const cityResponse = await fetch("/api/mood/get-city");
+      const { city } = await cityResponse.json();
+
+      // Insert mood directly to Supabase (RLS policy allows auth.uid() = user_id)
+      const { error: insertError } = await supabase
+        .from("mood_changes")
+        .insert({
+          user_id: user.id,
+          city,
           mood_value: mood.value,
           song_title: nowPlaying?.title || "Unknown",
           song_artist: nowPlaying?.artist || "Unknown",
           song_id: nowPlaying?.id
-        })
-      });
+        });
 
-      if (response.status === 429) {
-        const data = await response.json();
-        setCooldown(data.retry_after || 15);
-        toast.error(`Slow down! Wait ${data.retry_after}s`);
-        return;
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to submit mood");
+      if (insertError) {
+        console.error("Error submitting mood:", insertError);
+        throw new Error(insertError.message || "Failed to submit mood");
       }
 
       setLastSubmit(now);
