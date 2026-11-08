@@ -1,10 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServerClient, type CookieOptions } from "@supabase/auth-helpers-nextjs";
+import { serialize, parse } from "cookie";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // Track cookies to set
+  const cookiesToSet: string[] = [];
+
   // Create server-side Supabase client with proper cookie handlers
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,10 +19,22 @@ export default async function handler(
           return req.cookies[name];
         },
         set(name: string, value: string, options: CookieOptions) {
-          res.setHeader("Set-Cookie", `${name}=${value}; Path=/; ${options.maxAge ? `Max-Age=${options.maxAge};` : ""} ${options.httpOnly ? "HttpOnly;" : ""} ${options.sameSite ? `SameSite=${options.sameSite};` : ""}`);
+          // Serialize cookie with proper options
+          const serialized = serialize(name, value, {
+            path: options.path || "/",
+            maxAge: options.maxAge,
+            httpOnly: options.httpOnly,
+            secure: options.secure,
+            sameSite: options.sameSite as any
+          });
+          cookiesToSet.push(serialized);
         },
         remove(name: string, options: CookieOptions) {
-          res.setHeader("Set-Cookie", `${name}=; Path=/; Max-Age=0`);
+          const serialized = serialize(name, "", {
+            path: options.path || "/",
+            maxAge: 0
+          });
+          cookiesToSet.push(serialized);
         }
       }
     }
@@ -26,6 +42,11 @@ export default async function handler(
 
   // Auth check with server-side client
   const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  // Set accumulated cookies
+  if (cookiesToSet.length > 0) {
+    res.setHeader("Set-Cookie", cookiesToSet);
+  }
   
   if (authError || !user) {
     return res.status(401).json({ error: "Unauthorized - please log in" });
