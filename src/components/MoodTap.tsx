@@ -10,7 +10,13 @@ interface MoodTapProps {
   };
 }
 
-const MOODS = [
+type Mood = {
+  emoji: string;
+  label: string;
+  value: number;
+};
+
+const MOODS: Mood[] = [
   { emoji: "😴", label: "Chill", value: 10 },
   { emoji: "💙", label: "Calm", value: 30 },
   { emoji: "😊", label: "Content", value: 50 },
@@ -58,7 +64,7 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
     }
   }, [cooldown]);
 
-  const handleMoodTap = async (mood: typeof MOODS[0]) {
+  const handleMoodTap = async (mood: Mood) => {
     // Check client-side rate limit
     const now = Date.now();
     const timeSince = (now - lastSubmit) / 1000;
