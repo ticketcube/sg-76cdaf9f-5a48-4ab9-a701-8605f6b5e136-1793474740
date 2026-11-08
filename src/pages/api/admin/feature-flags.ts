@@ -1,69 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createServerClient, type CookieOptions } from "@supabase/auth-helpers-nextjs";
-import { serialize, parse } from "cookie";
+import { createClient } from "@/integrations/supabase/client";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Track cookies to set
-  const cookiesToSet: string[] = [];
-
-  // Create server-side Supabase client with proper cookie handlers
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return req.cookies[name];
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          // Serialize cookie with proper options
-          const serialized = serialize(name, value, {
-            path: options.path || "/",
-            maxAge: options.maxAge,
-            httpOnly: options.httpOnly,
-            secure: options.secure,
-            sameSite: options.sameSite as any
-          });
-          cookiesToSet.push(serialized);
-        },
-        remove(name: string, options: CookieOptions) {
-          const serialized = serialize(name, "", {
-            path: options.path || "/",
-            maxAge: 0
-          });
-          cookiesToSet.push(serialized);
-        }
-      }
-    }
-  );
-
-  // Auth check with server-side client
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
-  // Set accumulated cookies
-  if (cookiesToSet.length > 0) {
-    res.setHeader("Set-Cookie", cookiesToSet);
-  }
-  
-  if (authError || !user) {
-    return res.status(401).json({ error: "Unauthorized - please log in" });
-  }
-
-  // Check admin status from user_profiles table
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("is_admin")
-    .eq("user_id", user.id)
-    .single();
-
-  const isAdmin = profile?.is_admin === true;
-
-  if (!isAdmin) {
-    return res.status(403).json({ error: "Admin access required" });
-  }
+  const supabase = createClient();
 
   if (req.method === "GET") {
     // Get all feature flags
