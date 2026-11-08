@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { createClient } from "@/integrations/supabase/client";
 
 interface MoodTapProps {
   nowPlaying?: {
@@ -25,15 +26,28 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
   const [cooldown, setCooldown] = useState<number>(0);
 
   useEffect(() => {
-    // Check if mood tracker is enabled
-    fetch("/api/admin/feature-flags")
-      .then(res => res.json())
-      .then(data => {
-        const moodFlag = data.data?.find((f: any) => f.flag_name === "mood_tracker_enabled");
-        setEnabled(moodFlag?.enabled === true);
-      })
-      .catch(() => setEnabled(false))
-      .finally(() => setLoading(false));
+    const init = async () => {
+      // Ensure user has a session (anonymous or authenticated)
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        // Create anonymous session for first-time visitors
+        await supabase.auth.signInAnonymously();
+      }
+
+      // Check if mood tracker is enabled
+      fetch("/api/admin/feature-flags")
+        .then(res => res.json())
+        .then(data => {
+          const moodFlag = data.data?.find((f: any) => f.flag_name === "mood_tracker_enabled");
+          setEnabled(moodFlag?.enabled === true);
+        })
+        .catch(() => setEnabled(false))
+        .finally(() => setLoading(false));
+    };
+
+    init();
   }, []);
 
   useEffect(() => {
@@ -44,7 +58,7 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
     }
   }, [cooldown]);
 
-  const handleMoodTap = async (mood: typeof MOODS[0]) => {
+  const handleMoodTap = async (mood: typeof MOODS[0]) {
     // Check client-side rate limit
     const now = Date.now();
     const timeSince = (now - lastSubmit) / 1000;
@@ -80,7 +94,8 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
       }
 
       if (!response.ok) {
-        throw new Error("Failed to submit mood");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to submit mood");
       }
 
       setLastSubmit(now);
@@ -90,7 +105,7 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
       });
     } catch (err) {
       console.error("Mood submission error:", err);
-      toast.error("Failed to update mood");
+      toast.error(err instanceof Error ? err.message : "Failed to update mood");
     }
   };
 

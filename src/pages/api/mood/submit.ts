@@ -49,19 +49,11 @@ export default async function handler(
     return res.status(503).json({ error: "Mood tracker is currently disabled" });
   }
 
-  // Get current user - if none exists, create anonymous session
-  let { data: { user } } = await supabase.auth.getUser();
+  // Get current user (could be anonymous or authenticated)
+  const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) {
-    // Auto-create anonymous session for unauthenticated fans
-    const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously();
-    
-    if (anonError || !anonData.user) {
-      console.error("Failed to create anonymous session:", anonError);
-      return res.status(500).json({ error: "Failed to authenticate" });
-    }
-    
-    user = anonData.user;
+    return res.status(401).json({ error: "Authentication required. Please refresh the page." });
   }
 
   const { mood_value, song_title, song_artist, song_id } = req.body;
