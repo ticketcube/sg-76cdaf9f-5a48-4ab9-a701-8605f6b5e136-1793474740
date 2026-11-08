@@ -6,7 +6,11 @@ export default async function handler(
   res: NextApiResponse
 ) {
   // Create server-side Supabase client that reads cookies from request
-  const supabase = createServerClient({ req, res });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { req, res }
+  );
 
   // Auth check with server-side client
   const { data: { user }, error: authError } = await supabase.auth.getUser();
