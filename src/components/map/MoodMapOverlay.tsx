@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { DOT_LAT_TOP, DOT_STEP } from "@/lib/worldDots";
 
 interface CityMood {
   city: string;
@@ -19,6 +20,12 @@ const MOOD_COLORS: Record<number, string> = {
   60: "#EF4444",  // Red-Orange (61-80)
   80: "#DC2626"   // Bright Red (81-100)
 };
+
+// Use same projection as main map
+const project = (lat: number, lon: number) => ({
+  x: (lon + 180) / DOT_STEP,
+  y: (DOT_LAT_TOP - lat) / DOT_STEP + 0.5,
+});
 
 export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
   const [enabled, setEnabled] = useState(false);
@@ -71,14 +78,6 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
     }
   };
 
-  const latLngToPixel = (lat: number, lng: number) => {
-    const x = ((lng + 180) / 360) * width;
-    const latRad = (lat * Math.PI) / 180;
-    const mercN = Math.log(Math.tan(Math.PI / 4 + latRad / 2));
-    const y = (height / 2) - (width * mercN) / (2 * Math.PI);
-    return { x, y };
-  };
-
   const getMoodColor = (moodValue: number) => {
     if (moodValue <= 20) return MOOD_COLORS[0];
     if (moodValue <= 40) return MOOD_COLORS[20];
@@ -95,7 +94,7 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
         const mood = cityMoods.find(m => m.city === city.city);
         if (!mood) return null;
 
-        const { x, y } = latLngToPixel(city.lat, city.lng);
+        const { x, y } = project(city.lat, city.lng);
         const color = getMoodColor(mood.avg_mood);
         const isPulsing = pulsingCity === city.city;
 
@@ -105,24 +104,19 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
             <circle
               cx={x}
               cy={y}
-              r={12}
+              r={1.8}
               fill={color}
               opacity={0.4}
               className={isPulsing ? "animate-pulse" : ""}
-              style={{
-                transition: "all 300ms ease-out",
-                transform: isPulsing ? "scale(1.3)" : "scale(1)",
-                transformOrigin: `${x}px ${y}px`
-              }}
             />
             
             {/* Mood core */}
             <circle
               cx={x}
               cy={y}
-              r={6}
+              r={0.9}
               fill={color}
-              opacity={0.8}
+              opacity={0.9}
               style={{
                 transition: "fill 500ms ease-out"
               }}
