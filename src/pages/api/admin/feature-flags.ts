@@ -1,17 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createClient } from "@/integrations/supabase/client";
+import { createPagesServerClient } from "@supabase/auth-helpers-nextjs";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const supabase = createClient();
+  // Create server-side Supabase client that reads cookies from request
+  const supabase = createPagesServerClient({ req, res });
 
-  // Auth check - matches pattern from live-djs.ts
+  // Auth check with server-side client
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   
   if (authError || !user) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({ error: "Unauthorized - please log in" });
   }
 
   // Check admin status from user_profiles table
