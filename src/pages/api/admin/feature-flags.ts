@@ -1,12 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createServerSupabaseClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient } from "@supabase/auth-helpers-nextjs";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   // Create server-side Supabase client that reads cookies from request
-  const supabase = createServerSupabaseClient({ req, res });
+  const supabase = createServerClient({ req, res });
 
   // Auth check with server-side client
   const { data: { user }, error: authError } = await supabase.auth.getUser();
