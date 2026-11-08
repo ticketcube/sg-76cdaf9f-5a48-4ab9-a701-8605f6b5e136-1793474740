@@ -5,6 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { useRouter } from "next/router";
 import { ScheduleCard } from "@/pages/embed/schedule";
 import { ListenerMap } from "@/components/ListenerMap";
+import { MoodTap } from "@/components/MoodTap";
 
 interface NowPlaying {
     now_playing: {
@@ -264,6 +265,16 @@ export default function EmbedPlayer() {
                         className="flex-1"
                     />
                 </div>
+
+                {/* Mood Tap - emoji vibe tracker */}
+                <div className="mt-3 flex justify-center">
+                    <MoodTap nowPlaying={song ? {
+                        title: song.title,
+                        artist: song.artist,
+                        id: undefined
+                    } : undefined} />
+                </div>
+
                 <div className="mt-3"><ScheduleCard /></div>
                 <div className="mt-6"><ListenerMap /></div>
                
