@@ -8,18 +8,13 @@ interface MapOverlayManagerProps {
 
 export function MapOverlayManager({ children, width, height }: MapOverlayManagerProps) {
   return (
-    <div 
-      className="absolute inset-0 pointer-events-none"
-      style={{ width, height }}
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="xMidYMid meet"
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ overflow: "visible" }}
     >
-      <svg
-        width={width}
-        height={height}
-        className="absolute inset-0"
-        style={{ overflow: "visible" }}
-      >
-        {children}
-      </svg>
-    </div>
+      {children}
+    </svg>
   );
 }

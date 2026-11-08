@@ -102,11 +102,7 @@ export function ListenerMap() {
           );
         })}
 
-        {/* Overlay layers positioned absolutely over the map */}
-      </svg>
-
-      {/* Overlay manager renders outside SVG for proper absolute positioning */}
-      <div className="absolute inset-0 pointer-events-none">
+        {/* Overlay layers use same coordinate system as main map */}
         <MapOverlayManager width={COLS} height={ROWS}>
           <MoodMapOverlay 
             width={COLS} 
@@ -118,7 +114,7 @@ export function ListenerMap() {
             height={ROWS}
           />
         </MapOverlayManager>
-      </div>
+      </svg>
 
       <div className="absolute top-2 left-2 flex items-center gap-2 rounded-md bg-background/80 px-3 py-1.5 text-sm backdrop-blur-sm">
         <Radio className="h-4 w-4 animate-pulse text-primary" />
