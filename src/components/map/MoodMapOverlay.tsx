@@ -86,7 +86,7 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
     };
 
     fetchCityMoods();
-    const interval = setInterval(fetchCityMoods, 5000); // Check every 5s for new moods
+    const interval = setInterval(fetchCityMoods, 5000);
     return () => clearInterval(interval);
   }, [enabled, cityMoods]);
 
@@ -97,7 +97,6 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
   return (
     <g className="mood-overlay">
       {cityMoods.map((cityMood) => {
-        // Find matching city coordinates
         const cityCoords = cities.find(c => 
           c.city.toLowerCase() === cityMood.city.toLowerCase()
         );
@@ -115,44 +114,44 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
               <circle
                 cx={x}
                 cy={y}
-                r={0.5}
+                r={0.4}
                 fill="none"
                 stroke={color}
-                strokeWidth="0.2"
+                strokeWidth="0.15"
                 opacity="0.8"
               >
                 <animate
                   attributeName="r"
-                  values="0.5;2.0"
-                  dur="1s"
+                  values="0.4;1.5"
+                  dur="0.8s"
                   fill="freeze"
                 />
                 <animate
                   attributeName="opacity"
                   values="0.8;0"
-                  dur="1s"
+                  dur="0.8s"
                   fill="freeze"
                 />
               </circle>
             )}
 
-            {/* Static mood dot */}
+            {/* Static mood dot - same size as base listener dot */}
             <circle
               cx={x}
               cy={y}
-              r={0.45}
+              r={0.4}
               fill={color}
-              opacity="0.95"
+              opacity="0.9"
             />
 
             {/* Subtle glow */}
             <circle
               cx={x}
               cy={y}
-              r={0.6}
+              r={0.5}
               fill={color}
-              opacity="0.25"
-              filter="blur(0.2)"
+              opacity="0.2"
+              filter="blur(0.15)"
             />
           </g>
         );
