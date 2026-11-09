@@ -13,9 +13,7 @@ export default async function handler(
 
   try {
     // Call the database function to get dominant moods per city
-    // @ts-expect-error - Function added in migration, types will be regenerated
-    const { data, error } = await supabase
-      .rpc("get_city_dominant_moods");
+    const { data, error } = await (supabase.rpc as any)("get_city_dominant_moods");
 
     if (error) {
       console.error("Error fetching city moods:", error);
