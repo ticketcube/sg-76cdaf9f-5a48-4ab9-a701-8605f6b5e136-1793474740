@@ -98,12 +98,18 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
     return null;
   }
 
+  // Debug: show available cities and mood lookups
+  console.log("[MoodMapOverlay] Available cities:", cities.map(c => c.city));
+  console.log("[MoodMapOverlay] Looking for mood cities:", cityMoods.map(m => m.city));
+
   return (
     <g className="mood-overlay">
       {cityMoods.map((cityMood) => {
         const cityCoords = cities.find(c => 
           c.city.toLowerCase() === cityMood.city.toLowerCase()
         );
+        
+        console.log(`[MoodMapOverlay] Match for "${cityMood.city}":`, cityCoords ? `${cityCoords.city} (${cityCoords.lat}, ${cityCoords.lng})` : "NOT FOUND");
         
         if (!cityCoords) return null;
 
