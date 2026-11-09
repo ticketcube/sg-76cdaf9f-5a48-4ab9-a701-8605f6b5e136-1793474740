@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CityMoodDot } from "./CityMoodDot";
 
 interface MoodCity {
   city: string;
@@ -104,56 +105,20 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
         if (!cityCoords) return null;
 
         const { x, y } = project(cityCoords.lat, cityCoords.lng);
-        const color = MOOD_COLORS[cityMood.mood];
         const isPulsing = pulsingCities.has(cityMood.city);
 
         return (
-          <g key={`${cityMood.city}-${cityMood.timestamp}`}>
-            {/* Pulse ring when mood changes */}
-            {isPulsing && (
-              <circle
-                cx={x}
-                cy={y}
-                r={0.4}
-                fill="none"
-                stroke={color}
-                strokeWidth="0.15"
-                opacity="0.8"
-              >
-                <animate
-                  attributeName="r"
-                  values="0.4;1.5"
-                  dur="0.8s"
-                  fill="freeze"
-                />
-                <animate
-                  attributeName="opacity"
-                  values="0.8;0"
-                  dur="0.8s"
-                  fill="freeze"
-                />
-              </circle>
-            )}
-
-            {/* Static mood dot - same size as base listener dot */}
-            <circle
-              cx={x}
-              cy={y}
-              r={0.4}
-              fill={color}
-              opacity="0.9"
-            />
-
-            {/* Subtle glow */}
-            <circle
-              cx={x}
-              cy={y}
-              r={0.5}
-              fill={color}
-              opacity="0.2"
-              filter="blur(0.15)"
-            />
-          </g>
+          <CityMoodDot
+            key={`${cityMood.city}-${cityMood.timestamp}`}
+            city={cityMood.city}
+            lat={cityCoords.lat}
+            lng={cityCoords.lng}
+            mood={cityMood.mood}
+            timestamp={cityMood.timestamp}
+            isPulsing={isPulsing}
+            x={x}
+            y={y}
+          />
         );
       })}
     </g>
