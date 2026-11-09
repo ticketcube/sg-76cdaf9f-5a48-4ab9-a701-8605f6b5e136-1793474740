@@ -1,4 +1,5 @@
 import { useEffect, useState, memo, useRef } from "react";
+import { Headphones } from "lucide-react";
 import { DOT_LAT_TOP, DOT_STEP, LAND_ROWS } from "@/lib/worldDots";
 import { MapOverlayManager } from "./map/MapOverlayManager";
 import { MoodMapOverlay } from "./map/MoodMapOverlay";
@@ -67,6 +68,7 @@ export function ListenerMap() {
   }, []);
 
   const maxCount = Math.max(1, ...(data?.spots.map((s) => s.count) ?? [1]));
+  const total = data?.total ?? 0;
 
   // Convert spots to city list for mood overlay
   const cities = data?.spots.map(spot => ({
@@ -76,53 +78,59 @@ export function ListenerMap() {
   })) || [];
 
   return (
-    <div className="relative w-full h-full bg-background">
-      <svg
-        ref={svgRef}
-        className="w-full h-full"
-        viewBox={`0 0 ${COLS} ${ROWS}`}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <LandDots />
-
-        {data?.spots.map((spot, idx) => {
-          const { x, y } = project(spot.lat, spot.lon);
-          const r = 0.4 + (0.6 * spot.count) / maxCount;
-          return (
-            <g key={idx}>
-              <circle
-                cx={x}
-                cy={y}
-                r={r * 1.8}
-                className="fill-primary/20"
-              />
-              <circle cx={x} cy={y} r={r} className="fill-primary" />
-            </g>
-          );
-        })}
-
-        {/* Overlay layers use same coordinate system as main map */}
-        <MapOverlayManager width={COLS} height={ROWS}>
-          <MoodMapOverlay 
-            width={COLS} 
-            height={ROWS}
-            cities={cities}
-          />
-          <ShowsMapOverlay 
-            width={COLS} 
-            height={ROWS}
-          />
-        </MapOverlayManager>
-      </svg>
-
-      {/* Title on left */}
-      <div className="absolute top-2 left-2 rounded-md bg-background/80 px-3 py-1.5 text-sm font-semibold backdrop-blur-sm">
-        Live Listeners
+    <div className="bg-accent rounded-lg p-4 w-full">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Headphones className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-foreground text-sm">Listening now</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+          <span className="font-mono text-sm text-foreground tabular-nums">
+            {data ? total.toLocaleString("en-US") : "--"}
+          </span>
+        </div>
       </div>
 
-      {/* Count on right */}
-      <div className="absolute top-2 right-2 rounded-md bg-background/80 px-3 py-1.5 text-lg font-bold backdrop-blur-sm">
-        {data?.total ?? 0}
+      <div className="relative">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${COLS} ${ROWS}`}
+          className="w-full h-auto block"
+          role="img"
+          aria-label={`${total} people listening to OTW Radio right now`}
+        >
+          <LandDots />
+
+          {data?.spots.map((spot) => {
+            const { x, y } = project(spot.lat, spot.lon);
+            const r = 0.9 + 2.6 * Math.sqrt(spot.count / maxCount);
+            return (
+              <g key={`${spot.lat},${spot.lon}`}>
+                <circle cx={x} cy={y} r={r} className="fill-primary/25">
+                  <animate attributeName="r" values={`${r};${r * 1.8};${r}`} dur="3s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.6;0;0.6" dur="3s" repeatCount="indefinite" />
+                </circle>
+                <circle cx={x} cy={y} r={r * 0.55} className="fill-primary">
+                  <title>{`${spot.label}: ${spot.count} listening`}</title>
+                </circle>
+              </g>
+            );
+          })}
+
+          {/* Overlay layers use same coordinate system as main map */}
+          <MapOverlayManager width={COLS} height={ROWS}>
+            <MoodMapOverlay 
+              width={COLS} 
+              height={ROWS}
+              cities={cities}
+            />
+            <ShowsMapOverlay 
+              width={COLS} 
+              height={ROWS}
+            />
+          </MapOverlayManager>
+        </svg>
       </div>
     </div>
   );
