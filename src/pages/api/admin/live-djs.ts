@@ -39,7 +39,7 @@ interface Streamer {
   enforce_schedule?: boolean;
   schedule_items?: ScheduleItem[];
   user_id?: string;
-  email?: string;
+  email?: string | null;
   profile_display_name?: string;
 }
 

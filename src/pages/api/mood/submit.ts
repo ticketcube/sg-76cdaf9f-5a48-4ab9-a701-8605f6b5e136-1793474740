@@ -98,6 +98,18 @@ export default async function handler(
     }
   }
 
+  // Map mood_value to category
+  let mood_category: "cozy" | "party" | "reflection" | "focus";
+  if (mood_value <= 25) {
+    mood_category = "reflection";
+  } else if (mood_value <= 50) {
+    mood_category = "cozy";
+  } else if (mood_value <= 75) {
+    mood_category = "focus";
+  } else {
+    mood_category = "party";
+  }
+
   // Insert mood change
   const { data, error } = await supabase
     .from("mood_changes")
@@ -105,6 +117,7 @@ export default async function handler(
       user_id: user.id,
       city,
       mood_value,
+      mood_category,
       song_title,
       song_artist,
       song_id

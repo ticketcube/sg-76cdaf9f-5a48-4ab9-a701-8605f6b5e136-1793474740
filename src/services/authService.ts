@@ -10,7 +10,7 @@ export interface AuthUser {
 
 export interface UserProfile {
   user_id: string;
-  email: string;
+  email: string | null;
   username: string;
   display_name: string | null;
   role: "otwl-dj" | "otwl-podcast" | "otwl-staff" | null;
