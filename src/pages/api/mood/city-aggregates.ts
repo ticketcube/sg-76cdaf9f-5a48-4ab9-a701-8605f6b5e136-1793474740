@@ -39,8 +39,11 @@ export default async function handler(
       }
     });
 
+    const result = Array.from(cityMap.values());
+    console.log("[city-aggregates] Returning moods for cities:", result);
+
     return res.status(200).json({ 
-      cities: Array.from(cityMap.values()) 
+      cities: result
     });
   } catch (err) {
     console.error("Unexpected error:", err);

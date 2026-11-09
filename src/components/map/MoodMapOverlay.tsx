@@ -65,11 +65,14 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
           const data = await response.json();
           const newMoods: CityMoodData[] = data.cities || [];
           
+          console.log("[MoodMapOverlay] Fetched city moods:", newMoods);
+          
           // Detect which cities have new moods to trigger pulse
           const newPulsing = new Set<string>();
           newMoods.forEach(newMood => {
             const existing = cityMoods.find(m => m.city === newMood.city);
             if (!existing || existing.timestamp !== newMood.timestamp) {
+              console.log(`[MoodMapOverlay] New mood for ${newMood.city}: ${newMood.mood} (was: ${existing?.mood || "none"})`);
               newPulsing.add(newMood.city);
             }
           });
