@@ -1,5 +1,4 @@
 import { useEffect, useState, memo, useRef } from "react";
-import { Radio } from "lucide-react";
 import { DOT_LAT_TOP, DOT_STEP, LAND_ROWS } from "@/lib/worldDots";
 import { MapOverlayManager } from "./map/MapOverlayManager";
 import { MoodMapOverlay } from "./map/MoodMapOverlay";
@@ -116,12 +115,14 @@ export function ListenerMap() {
         </MapOverlayManager>
       </svg>
 
-      <div className="absolute top-2 left-2 flex items-center gap-2 rounded-md bg-background/80 px-3 py-1.5 text-sm backdrop-blur-sm">
-        <Radio className="h-4 w-4 animate-pulse text-primary" />
-        <span className="font-semibold">{data?.total ?? 0}</span>
-        <span className="text-muted-foreground">
-          {data?.located ?? 0} located
-        </span>
+      {/* Title on left */}
+      <div className="absolute top-2 left-2 rounded-md bg-background/80 px-3 py-1.5 text-sm font-semibold backdrop-blur-sm">
+        Live Listeners
+      </div>
+
+      {/* Count on right */}
+      <div className="absolute top-2 right-2 rounded-md bg-background/80 px-3 py-1.5 text-lg font-bold backdrop-blur-sm">
+        {data?.total ?? 0}
       </div>
     </div>
   );
