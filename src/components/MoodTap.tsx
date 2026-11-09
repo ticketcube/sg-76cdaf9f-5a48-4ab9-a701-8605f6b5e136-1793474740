@@ -10,18 +10,45 @@ interface MoodTapProps {
   };
 }
 
+type MoodCategory = "cozy" | "party" | "reflection" | "focus";
+
 type Mood = {
   emoji: string;
   label: string;
-  value: number;
+  category: MoodCategory;
+  color: string;
+  description: string;
 };
 
 const MOODS: Mood[] = [
-  { emoji: "😴", label: "Chill", value: 10 },
-  { emoji: "💙", label: "Calm", value: 30 },
-  { emoji: "😊", label: "Content", value: 50 },
-  { emoji: "🔥", label: "Energized", value: 70 },
-  { emoji: "⚡", label: "Hyped", value: 90 }
+  { 
+    emoji: "🌙", 
+    label: "Cozy", 
+    category: "cozy",
+    color: "hsl(180 60% 50%)",
+    description: "Chill Hangout" 
+  },
+  { 
+    emoji: "🔥", 
+    label: "Party", 
+    category: "party",
+    color: "hsl(10 80% 55%)",
+    description: "Peak Energy" 
+  },
+  { 
+    emoji: "🌊", 
+    label: "Reflection", 
+    category: "reflection",
+    color: "hsl(200 70% 65%)",
+    description: "Late Night Ambient" 
+  },
+  { 
+    emoji: "🎯", 
+    label: "Focus", 
+    category: "focus",
+    color: "hsl(45 80% 55%)",
+    description: "Locked In" 
+  }
 ];
 
 export function MoodTap({ nowPlaying }: MoodTapProps) {
@@ -84,71 +111,59 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
     setTimeout(() => setTappedEmoji(null), 600);
 
     try {
-      // Ensure we have an active session
+      // Get current session
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
         throw new Error("No active session. Please refresh the page.");
       }
 
-      // Check feature flag (client-side double-check)
-      const { data: flags } = await supabase
-        .from("feature_flags")
-        .select("enabled")
-        .eq("flag_name", "mood_tracker_enabled")
-        .single();
-
-      if (!flags?.enabled) {
-        toast.error("Mood tracker is currently disabled");
-        return;
-      }
-
-      // Check rate limit in database
+      // Check rate limit via database
       const { data: recentMood } = await supabase
         .from("mood_changes")
         .select("created_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (recentMood?.created_at) {
         const lastSubmission = new Date(recentMood.created_at).getTime();
-        const nowMs = Date.now();
-        const timeSinceLastSubmission = (nowMs - lastSubmission) / 1000;
+        const timeSinceLastSubmission = (Date.now() - lastSubmission) / 1000;
 
         if (timeSinceLastSubmission < 15) {
           const remainingTime = Math.ceil(15 - timeSinceLastSubmission);
           setCooldown(remainingTime);
-          toast.error(`Wait ${remainingTime}s before changing mood again`);
+          toast.error(`Slow down! Wait ${remainingTime}s`);
           return;
         }
       }
 
-      // Get city from IP (server-side geolocation)
+      // Get city from IP
       const cityResponse = await fetch("/api/mood/get-city");
-      const { city } = await cityResponse.json();
+      const cityData = await cityResponse.json();
+      const city = cityData.city || "Unknown";
 
-      // Insert mood directly to Supabase (RLS policy allows auth.uid() = user_id)
+      // Insert mood directly to Supabase
       const { error: insertError } = await supabase
         .from("mood_changes")
         .insert({
           user_id: user.id,
           city,
-          mood_value: mood.value,
+          mood_category: mood.category,
+          mood_value: 0, // Legacy field, keeping for backwards compat
           song_title: nowPlaying?.title || "Unknown",
           song_artist: nowPlaying?.artist || "Unknown",
           song_id: nowPlaying?.id
         });
 
       if (insertError) {
-        console.error("Error submitting mood:", insertError);
-        throw new Error(insertError.message || "Failed to submit mood");
+        throw insertError;
       }
 
       setLastSubmit(now);
       toast.success(`${mood.emoji} ${mood.label}`, {
-        description: `Your city's vibe just updated!`,
+        description: mood.description,
         duration: 2000
       });
     } catch (err) {
@@ -166,7 +181,7 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
       <span className="text-xs text-muted-foreground font-medium">Vibe:</span>
       {MOODS.map(mood => (
         <button
-          key={mood.value}
+          key={mood.category}
           onClick={() => handleMoodTap(mood)}
           disabled={cooldown > 0}
           className={`
@@ -174,8 +189,13 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
             disabled:opacity-50 disabled:cursor-not-allowed
             ${tappedEmoji === mood.emoji ? "scale-150 animate-pulse" : ""}
           `}
-          title={`${mood.label} (${mood.value})`}
+          title={`${mood.label} - ${mood.description}`}
           aria-label={mood.label}
+          style={{
+            filter: tappedEmoji === mood.emoji 
+              ? `drop-shadow(0 0 8px ${mood.color})` 
+              : undefined
+          }}
         >
           {mood.emoji}
         </button>

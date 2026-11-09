@@ -11,24 +11,19 @@ export default async function handler(
 
   const supabase = createClient();
 
-  // Check feature flag
-  const { data: flags } = await supabase
-    .from("feature_flags")
-    .select("enabled")
-    .eq("flag_name", "mood_tracker_enabled")
-    .single();
+  try {
+    // Call the database function to get dominant moods per city
+    const { data, error } = await supabase
+      .rpc("get_city_dominant_moods");
 
-  if (!flags?.enabled) {
-    return res.status(503).json({ error: "Mood tracker is currently disabled" });
+    if (error) {
+      console.error("Error fetching city moods:", error);
+      return res.status(500).json({ error: "Failed to fetch city mood data" });
+    }
+
+    return res.status(200).json({ cities: data || [] });
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
-
-  // Call Postgres function for city mood aggregates
-  const { data, error } = await supabase.rpc("get_city_mood_aggregates");
-
-  if (error) {
-    console.error("Error fetching city mood aggregates:", error);
-    return res.status(500).json({ error: "Failed to fetch mood aggregates" });
-  }
-
-  return res.status(200).json({ data });
 }

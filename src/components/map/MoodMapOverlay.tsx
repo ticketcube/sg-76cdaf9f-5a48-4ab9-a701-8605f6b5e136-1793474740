@@ -1,27 +1,43 @@
-import { useState, useEffect } from "react";
-import { DOT_LAT_TOP, DOT_STEP } from "@/lib/worldDots";
+import { useEffect, useState } from "react";
 
-interface CityMood {
+interface MoodCity {
   city: string;
-  avg_mood: number;
-  mood_count: number;
+  lat: number;
+  lng: number;
+}
+
+interface CityMoodData {
+  city: string;
+  dominant_mood: "cozy" | "party" | "reflection" | "focus";
+  total_submissions: number;
+  engagement_score: number;
+  last_activity: string;
 }
 
 interface MoodMapOverlayProps {
   width: number;
   height: number;
-  cities: Array<{ city: string; lat: number; lng: number }>;
+  cities: MoodCity[];
 }
 
-const MOOD_COLORS: Record<number, string> = {
-  0: "#1E40AF",   // Deep Blue (0-20)
-  20: "#7C3AED",  // Purple (21-40)
-  40: "#F97316",  // Orange (41-60)
-  60: "#EF4444",  // Red-Orange (61-80)
-  80: "#DC2626"   // Bright Red (81-100)
+// Mood colors matching MoodTap
+const MOOD_COLORS = {
+  cozy: "hsl(180 60% 50%)",       // Teal
+  party: "hsl(10 80% 55%)",       // Red
+  reflection: "hsl(200 70% 65%)", // Light Blue
+  focus: "hsl(45 80% 55%)"        // Gold
 };
 
-// Use same projection as main map
+const MOOD_EMOJIS = {
+  cozy: "🌙",
+  party: "🔥",
+  reflection: "🌊",
+  focus: "🎯"
+};
+
+const DOT_STEP = 10;
+const DOT_LAT_TOP = 70;
+
 const project = (lat: number, lon: number) => ({
   x: (lon + 180) / DOT_STEP,
   y: (DOT_LAT_TOP - lat) / DOT_STEP + 0.5,
@@ -29,97 +45,108 @@ const project = (lat: number, lon: number) => ({
 
 export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
   const [enabled, setEnabled] = useState(false);
-  const [cityMoods, setCityMoods] = useState<CityMood[]>([]);
-  const [pulsingCity, setPulsingCity] = useState<string | null>(null);
+  const [cityMoods, setCityMoods] = useState<CityMoodData[]>([]);
 
   useEffect(() => {
+    const checkFeatureFlag = async () => {
+      try {
+        const response = await fetch("/api/admin/feature-flags");
+        const result = await response.json();
+        const flag = result.data?.find((f: any) => f.flag_name === "mood_tracker_enabled");
+        setEnabled(flag?.enabled || false);
+      } catch {
+        setEnabled(false);
+      }
+    };
+
     checkFeatureFlag();
   }, []);
 
   useEffect(() => {
-    if (enabled) {
-      fetchMoodAggregates();
-      const interval = setInterval(fetchMoodAggregates, 10000); // Poll every 10s
-      return () => clearInterval(interval);
-    }
+    if (!enabled) return;
+
+    const fetchCityMoods = async () => {
+      try {
+        const response = await fetch("/api/mood/city-aggregates");
+        if (response.ok) {
+          const data = await response.json();
+          setCityMoods(data.cities || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch city moods:", error);
+      }
+    };
+
+    fetchCityMoods();
+    const interval = setInterval(fetchCityMoods, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
   }, [enabled]);
 
-  const checkFeatureFlag = async () => {
-    try {
-      const response = await fetch("/api/admin/feature-flags");
-      const result = await response.json();
-      const flag = result.data?.find((f: any) => f.flag_name === "mood_tracker_enabled");
-      setEnabled(flag?.enabled || false);
-    } catch (error) {
-      console.error("Error checking mood_tracker_enabled flag:", error);
-    }
-  };
-
-  const fetchMoodAggregates = async () => {
-    try {
-      const response = await fetch("/api/mood/city-aggregates");
-      if (!response.ok) return;
-      const result = await response.json();
-      
-      const newMoods = result.data || [];
-      
-      // Detect changes and trigger pulse
-      newMoods.forEach((newMood: CityMood) => {
-        const oldMood = cityMoods.find(m => m.city === newMood.city);
-        if (oldMood && oldMood.avg_mood !== newMood.avg_mood) {
-          setPulsingCity(newMood.city);
-          setTimeout(() => setPulsingCity(null), 600);
-        }
-      });
-      
-      setCityMoods(newMoods);
-    } catch (error) {
-      console.error("Error fetching mood aggregates:", error);
-    }
-  };
-
-  const getMoodColor = (moodValue: number) => {
-    if (moodValue <= 20) return MOOD_COLORS[0];
-    if (moodValue <= 40) return MOOD_COLORS[20];
-    if (moodValue <= 60) return MOOD_COLORS[40];
-    if (moodValue <= 80) return MOOD_COLORS[60];
-    return MOOD_COLORS[80];
-  };
-
-  if (!enabled || cityMoods.length === 0) return null;
+  if (!enabled || cityMoods.length === 0) {
+    return null;
+  }
 
   return (
-    <g style={{ pointerEvents: "none" }}>
-      {cities.map(city => {
-        const mood = cityMoods.find(m => m.city === city.city);
-        if (!mood) return null;
+    <g className="mood-overlay">
+      {cityMoods.map((cityMood) => {
+        // Find matching city coordinates
+        const cityCoords = cities.find(c => 
+          c.city.toLowerCase() === cityMood.city.toLowerCase()
+        );
+        
+        if (!cityCoords) return null;
 
-        const { x, y } = project(city.lat, city.lng);
-        const color = getMoodColor(mood.avg_mood);
-        const isPulsing = pulsingCity === city.city;
+        const { x, y } = project(cityCoords.lat, cityCoords.lng);
+        const color = MOOD_COLORS[cityMood.dominant_mood];
+        
+        // Calculate pulse speed based on engagement (higher = faster)
+        // engagement_score is submissions per minute
+        const pulseSpeed = Math.max(0.5, Math.min(3, cityMood.engagement_score));
+        const animationDuration = (2 / pulseSpeed).toFixed(2);
 
         return (
-          <g key={city.city}>
-            {/* Mood glow */}
+          <g key={cityMood.city}>
+            {/* Pulsing outer ring */}
             <circle
               cx={x}
               cy={y}
-              r={1.8}
+              r={0.8}
+              fill="none"
+              stroke={color}
+              strokeWidth="0.15"
+              opacity="0.6"
+            >
+              <animate
+                attributeName="r"
+                values="0.8;1.4;0.8"
+                dur={`${animationDuration}s`}
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.6;0.2;0.6"
+                dur={`${animationDuration}s`}
+                repeatCount="indefinite"
+              />
+            </circle>
+
+            {/* Static core dot */}
+            <circle
+              cx={x}
+              cy={y}
+              r={0.5}
               fill={color}
-              opacity={0.4}
-              className={isPulsing ? "animate-pulse" : ""}
+              opacity="0.9"
             />
-            
-            {/* Mood core */}
+
+            {/* Glow effect */}
             <circle
               cx={x}
               cy={y}
-              r={0.9}
+              r={0.7}
               fill={color}
-              opacity={0.9}
-              style={{
-                transition: "fill 500ms ease-out"
-              }}
+              opacity="0.3"
+              filter="blur(0.3)"
             />
           </g>
         );
