@@ -1,6 +1,6 @@
 ---
 title: MapOverlayManager and Map Layers
-status: todo
+status: done
 priority: high
 type: feature
 tags: [frontend, ui, map, architecture]

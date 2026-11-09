@@ -1,6 +1,6 @@
 ---
 title: ShowsMapOverlay Component
-status: todo
+status: done
 priority: medium
 type: feature
 tags: [frontend, ui, map, shows]

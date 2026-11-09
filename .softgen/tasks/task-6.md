@@ -1,6 +1,6 @@
 ---
 title: Mood Tracker Database and API
-status: todo
+status: done
 priority: urgent
 type: feature
 tags: [backend, database, api]

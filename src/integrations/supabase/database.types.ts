@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -2087,6 +2087,7 @@ export type Database = {
           city: string
           created_at: string | null
           id: string
+          mood_category: Database["public"]["Enums"]["mood_category"]
           mood_value: number
           song_artist: string | null
           song_id: string | null
@@ -2097,6 +2098,7 @@ export type Database = {
           city: string
           created_at?: string | null
           id?: string
+          mood_category: Database["public"]["Enums"]["mood_category"]
           mood_value: number
           song_artist?: string | null
           song_id?: string | null
@@ -2107,6 +2109,7 @@ export type Database = {
           city?: string
           created_at?: string | null
           id?: string
+          mood_category?: Database["public"]["Enums"]["mood_category"]
           mood_value?: number
           song_artist?: string | null
           song_id?: string | null
@@ -3902,7 +3905,7 @@ export type Database = {
           azuracast_streamer_username: string | null
           created_at: string
           display_name: string | null
-          email: string
+          email: string | null
           fandragon_id: string | null
           full_name: string | null
           has_used_trial: boolean | null
@@ -3926,7 +3929,7 @@ export type Database = {
           azuracast_streamer_username?: string | null
           created_at?: string
           display_name?: string | null
-          email: string
+          email?: string | null
           fandragon_id?: string | null
           full_name?: string | null
           has_used_trial?: boolean | null
@@ -3950,7 +3953,7 @@ export type Database = {
           azuracast_streamer_username?: string | null
           created_at?: string
           display_name?: string | null
-          email?: string
+          email?: string | null
           fandragon_id?: string | null
           full_name?: string | null
           has_used_trial?: boolean | null
@@ -4086,7 +4089,16 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      city_mood_aggregates: {
+        Row: {
+          city: string | null
+          last_submission: string | null
+          mood_category: Database["public"]["Enums"]["mood_category"] | null
+          seconds_since_last: number | null
+          submission_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_artist_revenue_split: {
@@ -4120,6 +4132,16 @@ export type Database = {
         }
         Returns: string
       }
+      get_city_dominant_moods: {
+        Args: never
+        Returns: {
+          city: string
+          dominant_mood: Database["public"]["Enums"]["mood_category"]
+          engagement_score: number
+          last_activity: string
+          total_submissions: number
+        }[]
+      }
       get_city_mood_aggregates: {
         Args: never
         Returns: {
@@ -4139,6 +4161,7 @@ export type Database = {
         | "promoter"
         | "artist"
         | "ticketing_provider"
+      mood_category: "cozy" | "party" | "reflection" | "focus"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4274,6 +4297,7 @@ export const Constants = {
         "artist",
         "ticketing_provider",
       ],
+      mood_category: ["cozy", "party", "reflection", "focus"],
     },
   },
 } as const
