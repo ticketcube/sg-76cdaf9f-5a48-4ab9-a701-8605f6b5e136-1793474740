@@ -242,30 +242,7 @@ export default function EmbedPlayer() {
                     </div>
                 </div>
 
-                {/* Volume controls */}
-                <div className="flex items-center gap-3 mt-3 px-2">
-                    <Button
-                        onClick={toggleMute}
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 shrink-0"
-                    >
-                        {isMuted ? (
-                            <VolumeX className="h-4 w-4" />
-                        ) : (
-                            <Volume2 className="h-4 w-4" />
-                        )}
-                    </Button>
-
-                    <Slider
-                        value={[volume]}
-                        onValueChange={([val]) => setVolume(val)}
-                        max={100}
-                        step={1}
-                        className="flex-1"
-                    />
-                </div>
-
+              
                 {/* Mood Tap - emoji vibe tracker */}
                 <div className="mt-3 flex justify-center">
                     <MoodTap nowPlaying={song ? {
