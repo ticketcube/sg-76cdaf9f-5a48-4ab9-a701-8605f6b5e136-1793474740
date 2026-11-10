@@ -1,13 +1,11 @@
 import { useEffect, useState, memo, useRef } from "react";
 import { Headphones } from "lucide-react";
 import { toast } from "sonner";
-import { geoEqualEarth } from "d3-geo";
 import { DOT_LAT_TOP, DOT_STEP, LAND_ROWS } from "@/lib/worldDots";
 import { MapOverlayManager } from "./map/MapOverlayManager";
 import { MoodMapOverlay } from "./map/MoodMapOverlay";
 import { ShowsMapOverlay } from "./map/ShowsMapOverlay";
 import { createClient } from "@/integrations/supabase/client";
-import { findCity } from "@/lib/cities";
 
 interface ListenerSpot {
   lat: number;
@@ -44,19 +42,10 @@ const COLS = LAND_ROWS[0].length;
 const ROWS = LAND_ROWS.length;
 const REFRESH_MS = 30000;
 
-// Equal Earth projection - modern equal-area projection for whole-world maps
-const createProjection = (centerLon = 0, centerLat = 0) => {
-  return geoEqualEarth()
-    .scale(COLS / (2 * Math.PI))
-    .translate([COLS / 2, ROWS / 2])
-    .rotate([-centerLon, -centerLat])
-    .precision(0.1);
-};
-
-const project = (lat: number, lon: number, projection: any) => {
-  const coords = projection([lon, lat]);
-  return coords ? { x: coords[0], y: coords[1] } : { x: -999, y: -999 };
-};
+const project = (lat: number, lon: number) => ({
+  x: (lon + 180) / DOT_STEP,
+  y: (DOT_LAT_TOP - lat) / DOT_STEP + 0.5,
+});
 
 const LandDots = memo(function LandDots() {
   const dots: JSX.Element[] = [];
@@ -78,32 +67,7 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
   const [lastSubmit, setLastSubmit] = useState<number>(0);
   const [cooldown, setCooldown] = useState<number>(0);
   const [supabase] = useState(() => createClient());
-  const [userCity, setUserCity] = useState<string | null>(null);
-  const [projection, setProjection] = useState(() => createProjection());
   const svgRef = useRef<SVGSVGElement>(null);
-
-  // Fetch user's city and center map
-  useEffect(() => {
-    const getUserCity = async () => {
-      try {
-        const response = await fetch("/api/mood/get-city");
-        const data = await response.json();
-        if (data.city) {
-          setUserCity(data.city);
-          const cityCoords = findCity(data.city);
-          if (cityCoords) {
-            // Create projection centered on user's city
-            const newProjection = createProjection(cityCoords.lng, cityCoords.lat);
-            setProjection(newProjection);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to get user city:", error);
-      }
-    };
-
-    getUserCity();
-  }, []);
 
   // Fetch mood categories for legend/buttons
   useEffect(() => {
@@ -308,9 +272,6 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
         <div className="flex items-center gap-2">
           <Headphones className="h-4 w-4 text-primary" />
           <span className="font-semibold text-foreground text-sm">Listening now</span>
-          {userCity && (
-            <span className="text-xs text-muted">• Centered on {userCity}</span>
-          )}
         </div>
 
         {/* Right side - Listener count */}
@@ -328,15 +289,12 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
           viewBox={`0 0 ${COLS} ${ROWS}`}
           className="w-full h-auto block"
           role="img"
-          aria-label={`${total} people listening to OTW Radio right now${userCity ? `, centered on ${userCity}` : ''}`}
+          aria-label={`${total} people listening to OTW Radio right now`}
         >
           <LandDots />
 
           {data?.spots.map((spot) => {
-            const { x, y } = project(spot.lat, spot.lon, projection);
-            // Skip if projection failed or out of bounds
-            if (x < 0 || y < 0 || x > COLS || y > ROWS) return null;
-            
+            const { x, y } = project(spot.lat, spot.lon);
             const r = 0.9 + 2.6 * Math.sqrt(spot.count / maxCount);
             return (
               <g key={`${spot.lat},${spot.lon}`}>
