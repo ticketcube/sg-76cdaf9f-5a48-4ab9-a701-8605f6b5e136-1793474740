@@ -248,19 +248,21 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
 
   // Calculate quadrant positions (in SVG coordinates)
   const getQuadrantPosition = (quadrant: string) => {
-    const padding = 5;
-    const boxSize = 4;
+    const padding = 8;
+    const gridWidth = 22;  // Space for 2x2 grid of 10x10 boxes
+    const gridHeight = 22;
+    
     switch (quadrant) {
       case 'lower_left':
-        return { x: padding, y: ROWS - padding - boxSize };
+        return { x: padding, y: ROWS - padding - gridHeight };
       case 'lower_right':
-        return { x: COLS - padding - boxSize * 4, y: ROWS - padding - boxSize };
+        return { x: COLS - padding - gridWidth, y: ROWS - padding - gridHeight };
       case 'upper_left':
-        return { x: padding, y: padding };
+        return { x: padding, y: padding + 3 };  // +3 for label
       case 'upper_right':
-        return { x: COLS - padding - boxSize * 4, y: padding };
+        return { x: COLS - padding - gridWidth, y: padding + 3 };
       default:
-        return { x: padding, y: ROWS - padding - boxSize };
+        return { x: padding, y: ROWS - padding - gridHeight };
     }
   };
 
@@ -325,24 +327,28 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
             if (quadrantMoods.length === 0) return null;
             
             const pos = getQuadrantPosition(quadrant);
+            const boxSize = 10;
+            const gap = 2;
             
             return (
               <g key={quadrant} className="vibe-check-quadrant">
                 {/* Label */}
                 <text 
                   x={pos.x} 
-                  y={pos.y - 1} 
-                  className="fill-foreground text-[2px] font-semibold"
-                  style={{ fontSize: '2px' }}
+                  y={pos.y - 2} 
+                  className="fill-foreground text-[3px] font-semibold"
+                  style={{ fontSize: '3px' }}
                 >
                   Vibe Check
                 </text>
                 
-                {/* Mood squares */}
+                {/* Mood squares in 2x2 grid */}
                 {quadrantMoods.map((mood, idx) => {
-                  const boxX = pos.x + (idx * 4.5);
-                  const boxY = pos.y;
-                  const boxSize = 4;
+                  // Arrange in 2x2 grid
+                  const col = idx % 2;
+                  const row = Math.floor(idx / 2);
+                  const boxX = pos.x + (col * (boxSize + gap));
+                  const boxY = pos.y + (row * (boxSize + gap));
                   
                   return (
                     <g 
@@ -357,13 +363,13 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
                         y={boxY}
                         width={boxSize}
                         height={boxSize}
-                        rx={0.5}
+                        rx={1}
                         fill={`hsl(${mood.color_hsl})`}
                         opacity={cooldown > 0 ? 0.5 : 0.9}
                         className="transition-all"
                         style={{
                           filter: tappedEmoji === mood.emoji 
-                            ? `drop-shadow(0 0 2px hsl(${mood.color_hsl}))` 
+                            ? `drop-shadow(0 0 3px hsl(${mood.color_hsl}))` 
                             : undefined
                         }}
                       >
@@ -377,14 +383,14 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
                         )}
                       </rect>
                       
-                      {/* Emoji */}
+                      {/* Emoji - much larger and centered */}
                       <text
                         x={boxX + boxSize / 2}
-                        y={boxY + boxSize / 2 + 0.8}
+                        y={boxY + boxSize / 2 + 1.5}
                         textAnchor="middle"
-                        className="text-[2.5px]"
+                        className="text-[5px]"
                         style={{ 
-                          fontSize: '2.5px',
+                          fontSize: '5px',
                           transform: tappedEmoji === mood.emoji ? 'scale(1.2)' : 'scale(1)',
                           transformOrigin: `${boxX + boxSize / 2}px ${boxY + boxSize / 2}px`
                         }}
@@ -401,10 +407,10 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
                 {/* Cooldown timer */}
                 {cooldown > 0 && (
                   <text
-                    x={pos.x + (quadrantMoods.length * 4.5) + 1}
-                    y={pos.y + 2.5}
-                    className="fill-primary text-[1.5px] font-mono"
-                    style={{ fontSize: '1.5px' }}
+                    x={pos.x + boxSize * 2 + gap * 2 + 2}
+                    y={pos.y + boxSize}
+                    className="fill-primary text-[3px] font-mono"
+                    style={{ fontSize: '3px' }}
                   >
                     {cooldown}s
                   </text>
