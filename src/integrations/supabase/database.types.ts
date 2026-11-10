@@ -2123,7 +2123,7 @@ export type Database = {
           city: string
           created_at: string | null
           id: string
-          mood_category: Database["public"]["Enums"]["mood_category"]
+          mood_category: string
           mood_value: number
           song_artist: string | null
           song_id: string | null
@@ -2134,7 +2134,7 @@ export type Database = {
           city: string
           created_at?: string | null
           id?: string
-          mood_category: Database["public"]["Enums"]["mood_category"]
+          mood_category: string
           mood_value: number
           song_artist?: string | null
           song_id?: string | null
@@ -2145,7 +2145,7 @@ export type Database = {
           city?: string
           created_at?: string | null
           id?: string
-          mood_category?: Database["public"]["Enums"]["mood_category"]
+          mood_category?: string
           mood_value?: number
           song_artist?: string | null
           song_id?: string | null
@@ -4128,10 +4128,8 @@ export type Database = {
       city_mood_aggregates: {
         Row: {
           city: string | null
-          last_submission: string | null
-          mood_category: Database["public"]["Enums"]["mood_category"] | null
-          seconds_since_last: number | null
-          submission_count: number | null
+          mood: string | null
+          timestamp: string | null
         }
         Relationships: []
       }

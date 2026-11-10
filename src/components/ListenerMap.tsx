@@ -4,6 +4,7 @@ import { DOT_LAT_TOP, DOT_STEP, LAND_ROWS } from "@/lib/worldDots";
 import { MapOverlayManager } from "./map/MapOverlayManager";
 import { MoodMapOverlay } from "./map/MoodMapOverlay";
 import { ShowsMapOverlay } from "./map/ShowsMapOverlay";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ListenerSpot {
   lat: number;
@@ -17,6 +18,14 @@ interface ListenersData {
   located: number;
   spots: ListenerSpot[];
   source: "live" | "demo" | "unconfigured" | "error";
+}
+
+interface MoodCategory {
+  id: string;
+  category_name: string;
+  emoji: string;
+  label: string;
+  color_hsl: string;
 }
 
 const COLS = LAND_ROWS[0].length;
@@ -42,7 +51,39 @@ const LandDots = memo(function LandDots() {
 
 export function ListenerMap() {
   const [data, setData] = useState<ListenersData | null>(null);
+  const [moods, setMoods] = useState<MoodCategory[]>([]);
+  const [moodEnabled, setMoodEnabled] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Fetch mood categories for legend
+  useEffect(() => {
+    const fetchMoods = async () => {
+      try {
+        // Check feature flag
+        const flagResponse = await fetch("/api/admin/feature-flags");
+        const flagData = await flagResponse.json();
+        const moodFlag = flagData.data?.find((f: any) => f.flag_name === "mood_tracker_enabled");
+        const isEnabled = moodFlag?.enabled === true;
+        setMoodEnabled(isEnabled);
+
+        if (isEnabled) {
+          const { data: moodData } = await supabase
+            .from("mood_categories")
+            .select("id, category_name, emoji, label, color_hsl")
+            .eq("enabled", true)
+            .order("display_order");
+
+          if (moodData) {
+            setMoods(moodData);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch mood categories:", error);
+      }
+    };
+
+    fetchMoods();
+  }, []);
 
   useEffect(() => {
     const fetchListeners = async () => {
@@ -71,7 +112,6 @@ export function ListenerMap() {
   const total = data?.total ?? 0;
 
   // Convert spots to city list for mood overlay
-  // Extract city name from labels like "Los Angeles, United States" → "Los Angeles"
   const cities = data?.spots
     .map(spot => {
       const cityName = spot.label.includes(',') 
@@ -85,15 +125,36 @@ export function ListenerMap() {
     })
     .filter(c => c.city !== "Unknown" && c.city !== "United States") || [];
 
-  console.log("[ListenerMap] Cities passed to MoodMapOverlay:", cities.map(c => c.city));
-
   return (
     <div className="bg-accent rounded-lg p-4 w-full">
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Headphones className="h-4 w-4 text-primary" />
-          <span className="font-semibold text-foreground text-sm">Listening now</span>
+        {/* Left side - Live Vibes with mood legend */}
+        <div className="flex items-center gap-3">
+          {moodEnabled && moods.length > 0 ? (
+            <>
+              <span className="font-semibold text-foreground text-sm">Live Vibes</span>
+              <div className="flex items-center gap-1.5">
+                {moods.map(mood => (
+                  <div
+                    key={mood.id}
+                    className="flex items-center justify-center w-7 h-7 rounded"
+                    style={{ backgroundColor: `hsl(${mood.color_hsl})` }}
+                    title={mood.label}
+                  >
+                    <span className="text-sm">{mood.emoji}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <Headphones className="h-4 w-4 text-primary" />
+              <span className="font-semibold text-foreground text-sm">Listening now</span>
+            </>
+          )}
         </div>
+
+        {/* Right side - Listener count */}
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
           <span className="font-mono text-sm text-foreground tabular-nums">
@@ -128,7 +189,6 @@ export function ListenerMap() {
             );
           })}
 
-          {/* Overlay layers use same coordinate system as main map */}
           <MapOverlayManager width={COLS} height={ROWS}>
             <MoodMapOverlay 
               width={COLS} 

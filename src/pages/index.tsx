@@ -242,7 +242,32 @@ export default function EmbedPlayer() {
                     </div>
                 </div>
 
-              
+                {/* Volume controls */}
+                <div className="mt-3 flex items-center gap-3 px-2">
+                    <Button
+                        onClick={toggleMute}
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0"
+                    >
+                        {isMuted ? (
+                            <VolumeX className="h-4 w-4" />
+                        ) : (
+                            <Volume2 className="h-4 w-4" />
+                        )}
+                    </Button>
+                    <Slider
+                        value={[volume]}
+                        onValueChange={(v) => setVolume(v[0])}
+                        max={100}
+                        step={1}
+                        className="flex-1"
+                    />
+                    <span className="text-xs text-muted-foreground font-mono w-8 text-right">
+                        {volume}%
+                    </span>
+                </div>
+
                 {/* Mood Tap - emoji vibe tracker */}
                 <div className="mt-3 flex justify-center">
                     <MoodTap nowPlaying={song ? {
@@ -252,9 +277,11 @@ export default function EmbedPlayer() {
                     } : undefined} />
                 </div>
 
-                <div className="mt-3"><ScheduleCard /></div>
-                <div className="mt-6"><ListenerMap /></div>
-               
+                {/* Listener Map with Live Vibes legend */}
+                <div className="mt-4"><ListenerMap /></div>
+
+                {/* Schedule */}
+                <div className="mt-4"><ScheduleCard /></div>
             </div>
         </div>
     );
