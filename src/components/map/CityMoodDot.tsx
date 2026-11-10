@@ -4,40 +4,33 @@ interface CityMoodDotProps {
   city: string;
   lat: number;
   lng: number;
-  mood: "cozy" | "party" | "reflection" | "focus";
+  mood: string;
+  moodColor: string;
   timestamp: string;
   isPulsing: boolean;
   x: number;
   y: number;
 }
 
-// Mood colors matching MoodTap
-const MOOD_COLORS = {
-  cozy: "hsl(180 60% 50%)",       // Teal
-  party: "hsl(10 80% 55%)",       // Red
-  reflection: "hsl(200 70% 65%)", // Light Blue
-  focus: "hsl(45 80% 55%)"        // Gold
-};
-
 export function CityMoodDot({ 
   city, 
-  mood, 
+  mood,
+  moodColor,
   timestamp,
   isPulsing, 
   x, 
   y 
 }: CityMoodDotProps) {
-  const [currentColor, setCurrentColor] = useState<string>(MOOD_COLORS[mood]);
+  const [currentColor, setCurrentColor] = useState<string>(moodColor);
   const [debugLog, setDebugLog] = useState<string>("");
 
   // Update color when mood changes
   useEffect(() => {
-    const newColor = MOOD_COLORS[mood];
-    const log = `[CityMoodDot] ${city}: ${mood} → ${newColor} (${timestamp})`;
+    const log = `[CityMoodDot] ${city}: ${mood} → ${moodColor} (${timestamp})`;
     console.log(log);
     setDebugLog(log);
-    setCurrentColor(newColor);
-  }, [mood, timestamp, city]);
+    setCurrentColor(moodColor);
+  }, [mood, moodColor, timestamp, city]);
 
   return (
     <g data-city={city} data-mood={mood} data-timestamp={timestamp}>
