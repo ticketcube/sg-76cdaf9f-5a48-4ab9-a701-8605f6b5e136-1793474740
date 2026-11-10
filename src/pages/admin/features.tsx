@@ -45,10 +45,10 @@ export default function AdminFeatures() {
     try {
       setLoading(true);
 
-      // Fetch feature flags
+      // Fetch feature flags (explicitly handle all fields)
       const { data: flagsData, error: flagsError } = await supabase
         .from("feature_flags")
-        .select("*")
+        .select("id, flag_name, enabled, description")
         .order("flag_name");
 
       if (flagsError) throw flagsError;
@@ -109,9 +109,11 @@ export default function AdminFeatures() {
 
       const updates = moods.map(mood => ({
         id: mood.id,
+        category_name: mood.category_name,
         emoji: mood.emoji,
         label: mood.label,
         color_hsl: mood.color_hsl,
+        display_order: mood.display_order,
         enabled: mood.enabled,
       }));
 
