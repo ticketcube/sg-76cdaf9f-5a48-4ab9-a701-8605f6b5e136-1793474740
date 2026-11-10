@@ -1,10 +1,11 @@
 import { useEffect, useState, memo, useRef } from "react";
 import { Headphones } from "lucide-react";
+import { toast } from "sonner";
 import { DOT_LAT_TOP, DOT_STEP, LAND_ROWS } from "@/lib/worldDots";
 import { MapOverlayManager } from "./map/MapOverlayManager";
 import { MoodMapOverlay } from "./map/MoodMapOverlay";
 import { ShowsMapOverlay } from "./map/ShowsMapOverlay";
-import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@/integrations/supabase/client";
 
 interface ListenerSpot {
   lat: number;
@@ -26,6 +27,15 @@ interface MoodCategory {
   emoji: string;
   label: string;
   color_hsl: string;
+  description?: string;
+}
+
+interface ListenerMapProps {
+  nowPlaying?: {
+    title: string;
+    artist: string;
+    id?: string;
+  };
 }
 
 const COLS = LAND_ROWS[0].length;
@@ -49,13 +59,17 @@ const LandDots = memo(function LandDots() {
   return <g className="fill-foreground/20">{dots}</g>;
 });
 
-export function ListenerMap() {
+export function ListenerMap({ nowPlaying }: ListenerMapProps) {
   const [data, setData] = useState<ListenersData | null>(null);
   const [moods, setMoods] = useState<MoodCategory[]>([]);
   const [moodEnabled, setMoodEnabled] = useState(false);
+  const [tappedEmoji, setTappedEmoji] = useState<string | null>(null);
+  const [lastSubmit, setLastSubmit] = useState<number>(0);
+  const [cooldown, setCooldown] = useState<number>(0);
+  const [supabase] = useState(() => createClient());
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Fetch mood categories for legend
+  // Fetch mood categories for legend/buttons
   useEffect(() => {
     const fetchMoods = async () => {
       try {
@@ -67,9 +81,15 @@ export function ListenerMap() {
         setMoodEnabled(isEnabled);
 
         if (isEnabled) {
+          // Ensure user session exists
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            await supabase.auth.signInAnonymously();
+          }
+
           const { data: moodData } = await supabase
             .from("mood_categories")
-            .select("id, category_name, emoji, label, color_hsl")
+            .select("id, category_name, emoji, label, color_hsl, description")
             .eq("enabled", true)
             .order("display_order");
 
@@ -83,8 +103,17 @@ export function ListenerMap() {
     };
 
     fetchMoods();
-  }, []);
+  }, [supabase]);
 
+  // Cooldown timer
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldown]);
+
+  // Fetch listeners data
   useEffect(() => {
     const fetchListeners = async () => {
       try {
@@ -108,6 +137,84 @@ export function ListenerMap() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleMoodTap = async (mood: MoodCategory) => {
+    // Check client-side rate limit
+    const now = Date.now();
+    const timeSince = (now - lastSubmit) / 1000;
+    
+    if (timeSince < 15) {
+      const remaining = Math.ceil(15 - timeSince);
+      setCooldown(remaining);
+      toast.error(`Wait ${remaining}s before changing mood again`);
+      return;
+    }
+
+    // Visual feedback
+    setTappedEmoji(mood.emoji);
+    setTimeout(() => setTappedEmoji(null), 600);
+
+    try {
+      // Get current session
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error("No active session. Please refresh the page.");
+      }
+
+      // Check rate limit via database
+      const { data: recentMood } = await supabase
+        .from("mood_changes")
+        .select("created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (recentMood?.created_at) {
+        const lastSubmission = new Date(recentMood.created_at).getTime();
+        const timeSinceLastSubmission = (Date.now() - lastSubmission) / 1000;
+
+        if (timeSinceLastSubmission < 15) {
+          const remainingTime = Math.ceil(15 - timeSinceLastSubmission);
+          setCooldown(remainingTime);
+          toast.error(`Slow down! Wait ${remainingTime}s`);
+          return;
+        }
+      }
+
+      // Get city from IP
+      const cityResponse = await fetch("/api/mood/get-city");
+      const cityData = await cityResponse.json();
+      const city = cityData.city || "Unknown";
+
+      // Insert mood directly to Supabase
+      const { error: insertError } = await supabase
+        .from("mood_changes")
+        .insert({
+          user_id: user.id,
+          city,
+          mood_category: mood.category_name,
+          mood_value: 0,
+          song_title: nowPlaying?.title || "Unknown",
+          song_artist: nowPlaying?.artist || "Unknown",
+          song_id: nowPlaying?.id
+        });
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      setLastSubmit(now);
+      toast.success(`${mood.emoji} ${mood.label}`, {
+        description: mood.description || "",
+        duration: 2000
+      });
+    } catch (err) {
+      console.error("Mood submission error:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to update mood");
+    }
+  };
+
   const maxCount = Math.max(1, ...(data?.spots.map((s) => s.count) ?? [1]));
   const total = data?.total ?? 0;
 
@@ -128,23 +235,41 @@ export function ListenerMap() {
   return (
     <div className="bg-accent rounded-lg p-4 w-full">
       <div className="flex items-center justify-between mb-3">
-        {/* Left side - Live Vibes with mood legend */}
+        {/* Left side - Live Vibes with interactive mood buttons */}
         <div className="flex items-center gap-3">
           {moodEnabled && moods.length > 0 ? (
             <>
               <span className="font-semibold text-foreground text-sm">Live Vibes</span>
               <div className="flex items-center gap-1.5">
                 {moods.map(mood => (
-                  <div
+                  <button
                     key={mood.id}
-                    className="flex items-center justify-center w-7 h-7 rounded"
-                    style={{ backgroundColor: `hsl(${mood.color_hsl})` }}
-                    title={mood.label}
+                    onClick={() => handleMoodTap(mood)}
+                    disabled={cooldown > 0}
+                    className={`
+                      flex items-center justify-center w-7 h-7 rounded
+                      transition-all duration-200 hover:scale-110 active:scale-95
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                      ${tappedEmoji === mood.emoji ? "scale-125 ring-2 ring-white" : ""}
+                    `}
+                    style={{ 
+                      backgroundColor: `hsl(${mood.color_hsl})`,
+                      filter: tappedEmoji === mood.emoji 
+                        ? `drop-shadow(0 0 8px hsl(${mood.color_hsl}))` 
+                        : undefined
+                    }}
+                    title={`${mood.label}${mood.description ? ` - ${mood.description}` : ""}`}
+                    aria-label={mood.label}
                   >
                     <span className="text-sm">{mood.emoji}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
+              {cooldown > 0 && (
+                <span className="text-xs text-primary font-mono">
+                  {cooldown}s
+                </span>
+              )}
             </>
           ) : (
             <>

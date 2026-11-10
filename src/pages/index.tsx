@@ -242,18 +242,18 @@ export default function EmbedPlayer() {
                     </div>
                 </div>
 
-                {/* Volume controls */}
-                <div className="mt-3 flex items-center gap-3 px-2">
+                {/* Volume controls - integrated inside player */}
+                <div className="mt-3 flex items-center gap-3 border-t border-border/40 pt-3">
                     <Button
                         onClick={toggleMute}
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 shrink-0"
+                        className="h-7 w-7 shrink-0"
                     >
                         {isMuted ? (
-                            <VolumeX className="h-4 w-4" />
+                            <VolumeX className="h-3.5 w-3.5" />
                         ) : (
-                            <Volume2 className="h-4 w-4" />
+                            <Volume2 className="h-3.5 w-3.5" />
                         )}
                     </Button>
                     <Slider
@@ -263,22 +263,19 @@ export default function EmbedPlayer() {
                         step={1}
                         className="flex-1"
                     />
-                    <span className="text-xs text-muted-foreground font-mono w-8 text-right">
+                    <span className="text-xs text-muted-foreground font-mono w-8 text-right tabular-nums">
                         {volume}%
                     </span>
                 </div>
 
-                {/* Mood Tap - emoji vibe tracker */}
-                <div className="mt-3 flex justify-center">
-                    <MoodTap nowPlaying={song ? {
+                {/* Listener Map with interactive Live Vibes */}
+                <div className="mt-4">
+                    <ListenerMap nowPlaying={song ? {
                         title: song.title,
                         artist: song.artist,
                         id: undefined
                     } : undefined} />
                 </div>
-
-                {/* Listener Map with Live Vibes legend */}
-                <div className="mt-4"><ListenerMap /></div>
 
                 {/* Schedule */}
                 <div className="mt-4"><ScheduleCard /></div>
