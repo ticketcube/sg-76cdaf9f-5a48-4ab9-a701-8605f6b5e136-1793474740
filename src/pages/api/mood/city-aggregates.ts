@@ -17,15 +17,16 @@ export default async function handler(
       .from("mood_changes")
       .select("city, mood_category, created_at")
       .not("city", "is", null)
-      .neq("city", "Unknown")
-      .neq("city", "Local")
+      .neq("city", "Local") // Still filter out Local
       .gte("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error fetching city moods:", error);
+      console.error("[city-aggregates] Error fetching city moods:", error);
       return res.status(500).json({ error: "Failed to fetch city mood data" });
     }
+
+    console.log(`[city-aggregates] Found ${data?.length || 0} mood changes in last 5 minutes`);
 
     // Get most recent mood per city
     const cityMap = new Map();
@@ -40,13 +41,19 @@ export default async function handler(
     });
 
     const result = Array.from(cityMap.values());
-    console.log("[city-aggregates] Returning moods for cities:", result);
+    console.log(`[city-aggregates] Returning ${result.length} unique cities with moods`);
+    
+    // Log each city for debugging
+    result.forEach(r => {
+      console.log(`  - ${r.city}: ${r.mood}`);
+    });
 
     return res.status(200).json({ 
-      cities: result
+      cities: result,
+      total_changes: data?.length || 0
     });
   } catch (err) {
-    console.error("Unexpected error:", err);
+    console.error("[city-aggregates] Unexpected error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 }

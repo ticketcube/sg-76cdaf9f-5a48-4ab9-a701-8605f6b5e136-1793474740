@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/integrations/supabase/client";
+import { findCity } from "@/lib/cities";
 
 interface MoodTapProps {
   nowPlaying?: {
@@ -27,6 +28,7 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
   const [lastSubmit, setLastSubmit] = useState<number>(0);
   const [cooldown, setCooldown] = useState<number>(0);
   const [supabase] = useState(() => createClient());
+  const [userCity, setUserCity] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -62,6 +64,9 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
           setMoods(moodData || []);
           console.log("[MoodTap] Loaded mood categories:", moodData);
         }
+
+        // Pre-fetch user's city
+        await detectUserCity();
       }
 
       setLoading(false);
@@ -69,6 +74,89 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
 
     init();
   }, [supabase]);
+
+  // Detect user's city using IP or browser geolocation
+  const detectUserCity = async (): Promise<string> => {
+    try {
+      // Try IP-based detection first
+      const cityResponse = await fetch("/api/mood/get-city");
+      const cityData = await cityResponse.json();
+      
+      console.log("[MoodTap] City detection result:", cityData);
+
+      // If IP detection worked, use it
+      if (cityData.city && !cityData.needs_fallback) {
+        setUserCity(cityData.city);
+        return cityData.city;
+      }
+
+      // Fallback to browser geolocation API
+      console.log("[MoodTap] IP detection failed, trying browser geolocation...");
+      
+      if (!navigator.geolocation) {
+        console.warn("[MoodTap] Geolocation not supported");
+        setUserCity("Unknown");
+        return "Unknown";
+      }
+
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            console.log(`[MoodTap] Got coordinates: ${latitude}, ${longitude}`);
+            
+            // Find nearest major city from our database
+            const city = findNearestCity(latitude, longitude);
+            console.log(`[MoodTap] Nearest city: ${city}`);
+            setUserCity(city);
+            resolve(city);
+          },
+          (error) => {
+            console.error("[MoodTap] Geolocation error:", error.message);
+            setUserCity("Unknown");
+            resolve("Unknown");
+          },
+          { timeout: 5000, maximumAge: 300000 } // Cache for 5 minutes
+        );
+      });
+    } catch (error) {
+      console.error("[MoodTap] City detection failed:", error);
+      setUserCity("Unknown");
+      return "Unknown";
+    }
+  };
+
+  // Find nearest city from coordinates
+  const findNearestCity = (lat: number, lng: number): string => {
+    // Use our cities database
+    const cities = [
+      { name: "New York", lat: 40.7128, lng: -74.0060 },
+      { name: "Los Angeles", lat: 34.0522, lng: -118.2437 },
+      { name: "Chicago", lat: 41.8781, lng: -87.6298 },
+      { name: "Houston", lat: 29.7604, lng: -95.3698 },
+      { name: "Phoenix", lat: 33.4484, lng: -112.0740 },
+      { name: "Philadelphia", lat: 39.9526, lng: -75.1652 },
+      { name: "London", lat: 51.5074, lng: -0.1278 },
+      { name: "Paris", lat: 48.8566, lng: 2.3522 },
+      { name: "Tokyo", lat: 35.6762, lng: 139.6503 },
+      { name: "Sydney", lat: -33.8688, lng: 151.2093 },
+    ];
+
+    let nearest = cities[0];
+    let minDist = Number.MAX_VALUE;
+
+    for (const city of cities) {
+      const dist = Math.sqrt(
+        Math.pow(city.lat - lat, 2) + Math.pow(city.lng - lng, 2)
+      );
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = city;
+      }
+    }
+
+    return nearest.name;
+  };
 
   useEffect(() => {
     // Cooldown timer
@@ -123,10 +211,13 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
         }
       }
 
-      // Get city from IP
-      const cityResponse = await fetch("/api/mood/get-city");
-      const cityData = await cityResponse.json();
-      const city = cityData.city || "Unknown";
+      // Get or detect city
+      let city = userCity;
+      if (!city || city === "Unknown") {
+        city = await detectUserCity();
+      }
+
+      console.log(`[MoodTap] Submitting mood for city: ${city}`);
 
       // Insert mood directly to Supabase
       const { error: insertError } = await supabase
@@ -142,12 +233,15 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
         });
 
       if (insertError) {
+        console.error("[MoodTap] Insert error:", insertError);
         throw insertError;
       }
 
       setLastSubmit(now);
+      console.log(`[MoodTap] ✓ Mood submitted: ${mood.category_name} from ${city}`);
+      
       toast.success(`${mood.emoji} ${mood.label}`, {
-        description: mood.description || "",
+        description: `Mood set for ${city}`,
         duration: 2000
       });
     } catch (err) {
