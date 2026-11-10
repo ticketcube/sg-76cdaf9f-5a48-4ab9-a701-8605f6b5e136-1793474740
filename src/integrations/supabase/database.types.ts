@@ -2082,6 +2082,42 @@ export type Database = {
           },
         ]
       }
+      mood_categories: {
+        Row: {
+          category_name: string
+          color_hsl: string
+          created_at: string
+          display_order: number
+          emoji: string
+          enabled: boolean
+          id: string
+          label: string
+          updated_at: string
+        }
+        Insert: {
+          category_name: string
+          color_hsl: string
+          created_at?: string
+          display_order?: number
+          emoji: string
+          enabled?: boolean
+          id?: string
+          label: string
+          updated_at?: string
+        }
+        Update: {
+          category_name?: string
+          color_hsl?: string
+          created_at?: string
+          display_order?: number
+          emoji?: string
+          enabled?: boolean
+          id?: string
+          label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mood_changes: {
         Row: {
           city: string
