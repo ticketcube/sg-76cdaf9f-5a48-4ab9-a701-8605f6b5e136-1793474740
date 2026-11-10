@@ -2092,6 +2092,7 @@ export type Database = {
           enabled: boolean
           id: string
           label: string
+          quadrant_position: string | null
           updated_at: string
         }
         Insert: {
@@ -2103,6 +2104,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           label: string
+          quadrant_position?: string | null
           updated_at?: string
         }
         Update: {
@@ -2114,6 +2116,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           label?: string
+          quadrant_position?: string | null
           updated_at?: string
         }
         Relationships: []

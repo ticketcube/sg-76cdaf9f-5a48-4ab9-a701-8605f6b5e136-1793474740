@@ -27,6 +27,7 @@ interface MoodCategory {
   emoji: string;
   label: string;
   color_hsl: string;
+  quadrant_position: string;
 }
 
 interface ListenerMapProps {
@@ -88,7 +89,7 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
 
           const { data: moodData } = await supabase
             .from("mood_categories")
-            .select("id, category_name, emoji, label, color_hsl")
+            .select("id, category_name, emoji, label, color_hsl, quadrant_position")
             .eq("enabled", true)
             .order("display_order");
 
@@ -230,51 +231,46 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
     })
     .filter(c => c.city !== "Unknown" && c.city !== "United States") || [];
 
+  // Group moods by quadrant
+  const moodsByQuadrant: Record<string, MoodCategory[]> = {
+    lower_left: [],
+    lower_right: [],
+    upper_left: [],
+    upper_right: []
+  };
+
+  moods.forEach(mood => {
+    const pos = mood.quadrant_position || 'lower_left';
+    if (moodsByQuadrant[pos]) {
+      moodsByQuadrant[pos].push(mood);
+    }
+  });
+
+  // Calculate quadrant positions (in SVG coordinates)
+  const getQuadrantPosition = (quadrant: string) => {
+    const padding = 5;
+    const boxSize = 4;
+    switch (quadrant) {
+      case 'lower_left':
+        return { x: padding, y: ROWS - padding - boxSize };
+      case 'lower_right':
+        return { x: COLS - padding - boxSize * 4, y: ROWS - padding - boxSize };
+      case 'upper_left':
+        return { x: padding, y: padding };
+      case 'upper_right':
+        return { x: COLS - padding - boxSize * 4, y: padding };
+      default:
+        return { x: padding, y: ROWS - padding - boxSize };
+    }
+  };
+
   return (
     <div className="bg-accent rounded-lg p-4 w-full">
       <div className="flex items-center justify-between mb-3">
-        {/* Left side - Live Vibes with interactive mood buttons */}
-        <div className="flex items-center gap-3">
-          {moodEnabled && moods.length > 0 ? (
-            <>
-              <span className="font-semibold text-foreground text-sm">Live Vibes</span>
-              <div className="flex items-center gap-1.5">
-                {moods.map(mood => (
-                  <button
-                    key={mood.id}
-                    onClick={() => handleMoodTap(mood)}
-                    disabled={cooldown > 0}
-                    className={`
-                      flex items-center justify-center w-7 h-7 rounded
-                      transition-all duration-200 hover:scale-110 active:scale-95
-                      disabled:opacity-50 disabled:cursor-not-allowed
-                      ${tappedEmoji === mood.emoji ? "scale-125 ring-2 ring-white" : ""}
-                    `}
-                    style={{ 
-                      backgroundColor: `hsl(${mood.color_hsl})`,
-                      filter: tappedEmoji === mood.emoji 
-                        ? `drop-shadow(0 0 8px hsl(${mood.color_hsl}))` 
-                        : undefined
-                    }}
-                    title={mood.label}
-                    aria-label={mood.label}
-                  >
-                    <span className="text-sm">{mood.emoji}</span>
-                  </button>
-                ))}
-              </div>
-              {cooldown > 0 && (
-                <span className="text-xs text-primary font-mono">
-                  {cooldown}s
-                </span>
-              )}
-            </>
-          ) : (
-            <>
-              <Headphones className="h-4 w-4 text-primary" />
-              <span className="font-semibold text-foreground text-sm">Listening now</span>
-            </>
-          )}
+        {/* Left side - Listening now with headphones */}
+        <div className="flex items-center gap-2">
+          <Headphones className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-foreground text-sm">Listening now</span>
         </div>
 
         {/* Right side - Listener count */}
@@ -323,6 +319,99 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
               height={ROWS}
             />
           </MapOverlayManager>
+
+          {/* Vibe Check - Interactive mood buttons in quadrants */}
+          {moodEnabled && Object.entries(moodsByQuadrant).map(([quadrant, quadrantMoods]) => {
+            if (quadrantMoods.length === 0) return null;
+            
+            const pos = getQuadrantPosition(quadrant);
+            
+            return (
+              <g key={quadrant} className="vibe-check-quadrant">
+                {/* Label */}
+                <text 
+                  x={pos.x} 
+                  y={pos.y - 1} 
+                  className="fill-foreground text-[2px] font-semibold"
+                  style={{ fontSize: '2px' }}
+                >
+                  Vibe Check
+                </text>
+                
+                {/* Mood squares */}
+                {quadrantMoods.map((mood, idx) => {
+                  const boxX = pos.x + (idx * 4.5);
+                  const boxY = pos.y;
+                  const boxSize = 4;
+                  
+                  return (
+                    <g 
+                      key={mood.id}
+                      className="cursor-pointer"
+                      onClick={() => handleMoodTap(mood)}
+                      style={{ pointerEvents: cooldown > 0 ? 'none' : 'auto' }}
+                    >
+                      {/* Colored square background */}
+                      <rect
+                        x={boxX}
+                        y={boxY}
+                        width={boxSize}
+                        height={boxSize}
+                        rx={0.5}
+                        fill={`hsl(${mood.color_hsl})`}
+                        opacity={cooldown > 0 ? 0.5 : 0.9}
+                        className="transition-all"
+                        style={{
+                          filter: tappedEmoji === mood.emoji 
+                            ? `drop-shadow(0 0 2px hsl(${mood.color_hsl}))` 
+                            : undefined
+                        }}
+                      >
+                        {tappedEmoji === mood.emoji && (
+                          <animate
+                            attributeName="opacity"
+                            values="0.9;1;0.9"
+                            dur="0.6s"
+                            repeatCount="1"
+                          />
+                        )}
+                      </rect>
+                      
+                      {/* Emoji */}
+                      <text
+                        x={boxX + boxSize / 2}
+                        y={boxY + boxSize / 2 + 0.8}
+                        textAnchor="middle"
+                        className="text-[2.5px]"
+                        style={{ 
+                          fontSize: '2.5px',
+                          transform: tappedEmoji === mood.emoji ? 'scale(1.2)' : 'scale(1)',
+                          transformOrigin: `${boxX + boxSize / 2}px ${boxY + boxSize / 2}px`
+                        }}
+                      >
+                        {mood.emoji}
+                      </text>
+                      
+                      {/* Tooltip */}
+                      <title>{mood.label}</title>
+                    </g>
+                  );
+                })}
+                
+                {/* Cooldown timer */}
+                {cooldown > 0 && (
+                  <text
+                    x={pos.x + (quadrantMoods.length * 4.5) + 1}
+                    y={pos.y + 2.5}
+                    className="fill-primary text-[1.5px] font-mono"
+                    style={{ fontSize: '1.5px' }}
+                  >
+                    {cooldown}s
+                  </text>
+                )}
+              </g>
+            );
+          })}
         </svg>
       </div>
     </div>

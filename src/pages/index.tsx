@@ -242,33 +242,7 @@ export default function EmbedPlayer() {
                     </div>
                 </div>
 
-                {/* Volume controls - integrated inside player */}
-                <div className="mt-3 flex items-center gap-3 border-t border-border/40 pt-3">
-                    <Button
-                        onClick={toggleMute}
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 shrink-0"
-                    >
-                        {isMuted ? (
-                            <VolumeX className="h-3.5 w-3.5" />
-                        ) : (
-                            <Volume2 className="h-3.5 w-3.5" />
-                        )}
-                    </Button>
-                    <Slider
-                        value={[volume]}
-                        onValueChange={(v) => setVolume(v[0])}
-                        max={100}
-                        step={1}
-                        className="flex-1"
-                    />
-                    <span className="text-xs text-muted-foreground font-mono w-8 text-right tabular-nums">
-                        {volume}%
-                    </span>
-                </div>
-
-                {/* Listener Map with interactive Live Vibes */}
+                {/* Listener Map with Vibe Check in lower left */}
                 <div className="mt-4">
                     <ListenerMap nowPlaying={song ? {
                         title: song.title,

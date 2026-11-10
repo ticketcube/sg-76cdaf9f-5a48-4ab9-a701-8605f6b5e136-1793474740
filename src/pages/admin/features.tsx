@@ -26,6 +26,7 @@ interface MoodCategory {
   color_hsl: string;
   display_order: number;
   enabled: boolean;
+  quadrant_position: string;
 }
 
 export default function AdminFeatures() {
@@ -114,6 +115,7 @@ export default function AdminFeatures() {
         color_hsl: mood.color_hsl,
         display_order: mood.display_order,
         enabled: mood.enabled,
+        quadrant_position: mood.quadrant_position
       }));
 
       const { error } = await supabase
@@ -304,47 +306,81 @@ export default function AdminFeatures() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor={`emoji-${mood.id}`}>Emoji</Label>
-                      <Input
-                        id={`emoji-${mood.id}`}
-                        value={mood.emoji}
-                        onChange={(e) => updateMood(mood.id, "emoji", e.target.value)}
-                        className="text-2xl text-center"
-                        maxLength={2}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`label-${mood.id}`}>Label</Label>
-                      <Input
-                        id={`label-${mood.id}`}
-                        value={mood.label}
-                        onChange={(e) => updateMood(mood.id, "label", e.target.value)}
-                        placeholder="Mood name"
-                      />
-                    </div>
-
-                    <div className="space-y-2 col-span-2">
-                      <Label htmlFor={`color-${mood.id}`}>
-                        Map Color (HSL format)
-                      </Label>
-                      <div className="flex gap-2">
-                        <div
-                          className="w-12 h-10 rounded border"
-                          style={{ backgroundColor: `hsl(${mood.color_hsl})` }}
+                  <div className="grid gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor={`emoji-${mood.id}`}>Emoji</Label>
+                        <Input
+                          id={`emoji-${mood.id}`}
+                          value={mood.emoji}
+                          onChange={(e) => {
+                            const updated = moods.map(m =>
+                              m.id === mood.id ? { ...m, emoji: e.target.value } : m
+                            );
+                            setMoods(updated);
+                          }}
+                          placeholder="🎵"
+                          maxLength={2}
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`label-${mood.id}`}>Label</Label>
+                        <Input
+                          id={`label-${mood.id}`}
+                          value={mood.label}
+                          onChange={(e) => {
+                            const updated = moods.map(m =>
+                              m.id === mood.id ? { ...m, label: e.target.value } : m
+                            );
+                            setMoods(updated);
+                          }}
+                          placeholder="Vibing"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`quadrant-${mood.id}`}>Map Position</Label>
+                      <select
+                        id={`quadrant-${mood.id}`}
+                        value={mood.quadrant_position || 'lower_left'}
+                        onChange={(e) => {
+                          const updated = moods.map(m =>
+                            m.id === mood.id ? { ...m, quadrant_position: e.target.value } : m
+                          );
+                          setMoods(updated);
+                        }}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="lower_left">Lower Left</option>
+                        <option value="lower_right">Lower Right</option>
+                        <option value="upper_left">Upper Left</option>
+                        <option value="upper_right">Upper Right</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`color-${mood.id}`}>Color (HSL)</Label>
+                      <div className="flex gap-2 items-center">
                         <Input
                           id={`color-${mood.id}`}
                           value={mood.color_hsl}
-                          onChange={(e) => updateMood(mood.id, "color_hsl", e.target.value)}
-                          placeholder="180 60% 50%"
-                          className="flex-1 font-mono"
+                          onChange={(e) => {
+                            const updated = moods.map(m =>
+                              m.id === mood.id ? { ...m, color_hsl: e.target.value } : m
+                            );
+                            setMoods(updated);
+                          }}
+                          placeholder="348 100% 54%"
+                        />
+                        <div
+                          className="w-10 h-10 rounded border border-border shrink-0"
+                          style={{ backgroundColor: `hsl(${mood.color_hsl})` }}
+                          title="Color preview"
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Format: H S% L% (e.g., "180 60% 50%" for teal)
+                        Format: hue saturation% lightness% (e.g., 348 100% 54%)
                       </p>
                     </div>
 
