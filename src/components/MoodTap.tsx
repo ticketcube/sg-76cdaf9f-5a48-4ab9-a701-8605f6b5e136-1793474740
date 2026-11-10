@@ -10,50 +10,19 @@ interface MoodTapProps {
   };
 }
 
-type MoodCategory = "cozy" | "party" | "reflection" | "focus";
-
 type Mood = {
+  id: string;
+  category_name: string;
   emoji: string;
   label: string;
-  category: MoodCategory;
-  color: string;
-  description: string;
+  color_hsl: string;
+  description?: string;
 };
-
-const MOODS: Mood[] = [
-  { 
-    emoji: "🌙", 
-    label: "Cozy", 
-    category: "cozy",
-    color: "hsl(180 60% 50%)",
-    description: "Chill Hangout" 
-  },
-  { 
-    emoji: "🔥", 
-    label: "Party", 
-    category: "party",
-    color: "hsl(10 80% 55%)",
-    description: "Peak Energy" 
-  },
-  { 
-    emoji: "🌊", 
-    label: "Reflection", 
-    category: "reflection",
-    color: "hsl(200 70% 65%)",
-    description: "Late Night Ambient" 
-  },
-  { 
-    emoji: "🎯", 
-    label: "Focus", 
-    category: "focus",
-    color: "hsl(45 80% 55%)",
-    description: "Locked In" 
-  }
-];
 
 export function MoodTap({ nowPlaying }: MoodTapProps) {
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [moods, setMoods] = useState<Mood[]>([]);
   const [tappedEmoji, setTappedEmoji] = useState<string | null>(null);
   const [lastSubmit, setLastSubmit] = useState<number>(0);
   const [cooldown, setCooldown] = useState<number>(0);
@@ -72,15 +41,30 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
         }
       }
 
-      // Check if mood tracker is enabled
-      fetch("/api/admin/feature-flags")
-        .then(res => res.json())
-        .then(data => {
-          const moodFlag = data.data?.find((f: any) => f.flag_name === "mood_tracker_enabled");
-          setEnabled(moodFlag?.enabled === true);
-        })
-        .catch(() => setEnabled(false))
-        .finally(() => setLoading(false));
+      // Fetch feature flag
+      const flagResponse = await fetch("/api/admin/feature-flags");
+      const flagData = await flagResponse.json();
+      const moodFlag = flagData.data?.find((f: any) => f.flag_name === "mood_tracker_enabled");
+      const isEnabled = moodFlag?.enabled === true;
+      setEnabled(isEnabled);
+
+      // Fetch mood categories from database
+      if (isEnabled) {
+        const { data: moodData, error: moodError } = await supabase
+          .from("mood_categories")
+          .select("id, category_name, emoji, label, color_hsl")
+          .eq("enabled", true)
+          .order("display_order");
+
+        if (moodError) {
+          console.error("Failed to fetch mood categories:", moodError);
+        } else {
+          setMoods(moodData || []);
+          console.log("[MoodTap] Loaded mood categories:", moodData);
+        }
+      }
+
+      setLoading(false);
     };
 
     init();
@@ -150,7 +134,7 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
         .insert({
           user_id: user.id,
           city,
-          mood_category: mood.category,
+          mood_category: mood.category_name,
           mood_value: 0, // Legacy field, keeping for backwards compat
           song_title: nowPlaying?.title || "Unknown",
           song_artist: nowPlaying?.artist || "Unknown",
@@ -163,7 +147,7 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
 
       setLastSubmit(now);
       toast.success(`${mood.emoji} ${mood.label}`, {
-        description: mood.description,
+        description: mood.description || "",
         duration: 2000
       });
     } catch (err) {
@@ -172,16 +156,16 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
     }
   };
 
-  if (loading || !enabled) {
+  if (loading || !enabled || moods.length === 0) {
     return null;
   }
 
   return (
     <div className="flex items-center gap-2 px-3 py-2 bg-background/80 backdrop-blur-sm rounded-full border border-primary/20">
       <span className="text-xs text-muted-foreground font-medium">Vibe:</span>
-      {MOODS.map(mood => (
+      {moods.map(mood => (
         <button
-          key={mood.category}
+          key={mood.id}
           onClick={() => handleMoodTap(mood)}
           disabled={cooldown > 0}
           className={`
@@ -189,11 +173,11 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
             disabled:opacity-50 disabled:cursor-not-allowed
             ${tappedEmoji === mood.emoji ? "scale-150 animate-pulse" : ""}
           `}
-          title={`${mood.label} - ${mood.description}`}
+          title={`${mood.label}${mood.description ? ` - ${mood.description}` : ""}`}
           aria-label={mood.label}
           style={{
             filter: tappedEmoji === mood.emoji 
-              ? `drop-shadow(0 0 8px ${mood.color})` 
+              ? `drop-shadow(0 0 8px hsl(${mood.color_hsl}))` 
               : undefined
           }}
         >

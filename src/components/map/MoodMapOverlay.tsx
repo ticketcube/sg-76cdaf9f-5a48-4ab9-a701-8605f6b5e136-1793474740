@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CityMoodDot } from "./CityMoodDot";
 import { findCity } from "@/lib/cities";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MoodCity {
   city: string;
@@ -10,7 +11,7 @@ interface MoodCity {
 
 interface CityMoodData {
   city: string;
-  mood: "cozy" | "party" | "reflection" | "focus";
+  mood: string;
   timestamp: string;
 }
 
@@ -20,17 +21,9 @@ interface MoodMapOverlayProps {
   cities: MoodCity[];
 }
 
-// Mood colors matching MoodTap
-const MOOD_COLORS = {
-  cozy: "hsl(180 60% 50%)",       // Teal
-  party: "hsl(10 80% 55%)",       // Red
-  reflection: "hsl(200 70% 65%)", // Light Blue
-  focus: "hsl(45 80% 55%)"        // Gold
-};
-
 // Map projection constants - MUST match worldDots.ts for accurate plotting
-const DOT_STEP = 2;     // was 10 (wrong)
-const DOT_LAT_TOP = 82; // was 70 (wrong)
+const DOT_STEP = 2;
+const DOT_LAT_TOP = 82;
 
 const project = (lat: number, lon: number) => ({
   x: (lon + 180) / DOT_STEP,
@@ -41,20 +34,41 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
   const [enabled, setEnabled] = useState(false);
   const [cityMoods, setCityMoods] = useState<CityMoodData[]>([]);
   const [pulsingCities, setPulsingCities] = useState<Set<string>>(new Set());
+  const [moodColors, setMoodColors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const checkFeatureFlag = async () => {
+    const init = async () => {
       try {
+        // Check feature flag
         const response = await fetch("/api/admin/feature-flags");
         const result = await response.json();
         const flag = result.data?.find((f: any) => f.flag_name === "mood_tracker_enabled");
-        setEnabled(flag?.enabled || false);
-      } catch {
+        const isEnabled = flag?.enabled || false;
+        setEnabled(isEnabled);
+
+        // Fetch mood colors from database
+        if (isEnabled) {
+          const { data: moodData } = await supabase
+            .from("mood_categories")
+            .select("category_name, color_hsl")
+            .eq("enabled", true);
+
+          if (moodData) {
+            const colors: Record<string, string> = {};
+            moodData.forEach(m => {
+              colors[m.category_name] = `hsl(${m.color_hsl})`;
+            });
+            setMoodColors(colors);
+            console.log("[MoodMapOverlay] Loaded mood colors:", colors);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to initialize MoodMapOverlay:", error);
         setEnabled(false);
       }
     };
 
-    checkFeatureFlag();
+    init();
   }, []);
 
   useEffect(() => {
@@ -96,13 +110,16 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
     return () => clearInterval(interval);
   }, [enabled, cityMoods]);
 
-  if (!enabled || cityMoods.length === 0) {
+  if (!enabled || cityMoods.length === 0 || Object.keys(moodColors).length === 0) {
     return null;
   }
 
   return (
     <g className="mood-overlay">
       {cityMoods.map((cityMood) => {
+        // Get color for this mood category
+        const moodColor = moodColors[cityMood.mood] || "hsl(0 0% 50%)";
+
         // Try listener map spots first (for high-traffic cities with 3+ listeners)
         let cityCoords = cities.find(c => 
           c.city.toLowerCase() === cityMood.city.toLowerCase()
@@ -137,6 +154,7 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
             lat={cityCoords.lat}
             lng={cityCoords.lng}
             mood={cityMood.mood}
+            moodColor={moodColor}
             timestamp={cityMood.timestamp}
             isPulsing={isPulsing}
             x={x}
