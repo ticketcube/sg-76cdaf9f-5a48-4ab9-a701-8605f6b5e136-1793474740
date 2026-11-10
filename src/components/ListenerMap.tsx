@@ -1,7 +1,7 @@
 import { useEffect, useState, memo, useRef } from "react";
 import { Headphones } from "lucide-react";
 import { toast } from "sonner";
-import { geoNaturalEarth2 } from "d3-geo-projection";
+import { geoEqualEarth } from "d3-geo-projection";
 import { DOT_LAT_TOP, DOT_STEP, LAND_ROWS } from "@/lib/worldDots";
 import { MapOverlayManager } from "./map/MapOverlayManager";
 import { MoodMapOverlay } from "./map/MoodMapOverlay";
@@ -44,9 +44,9 @@ const COLS = LAND_ROWS[0].length;
 const ROWS = LAND_ROWS.length;
 const REFRESH_MS = 30000;
 
-// Natural Earth 2 projection setup - low distortion, suitable for world maps
+// Equal Earth projection - modern equal-area projection for whole-world maps
 const createProjection = (centerLon = 0, centerLat = 0) => {
-  return geoNaturalEarth2()
+  return geoEqualEarth()
     .scale(COLS / (2 * Math.PI))
     .translate([COLS / 2, ROWS / 2])
     .rotate([-centerLon, -centerLat])
