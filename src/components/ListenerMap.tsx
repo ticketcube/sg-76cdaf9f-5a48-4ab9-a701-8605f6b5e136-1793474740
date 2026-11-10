@@ -249,8 +249,8 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
   // Calculate quadrant positions (in SVG coordinates)
   const getQuadrantPosition = (quadrant: string) => {
     const padding = 8;
-    const gridWidth = 108;  // Space for 2x2 grid of 50x50 boxes with gaps
-    const gridHeight = 118; // +10 for label space
+    const gridWidth = 28;  // Space for 2x2 grid of 12x12 boxes with gaps
+    const gridHeight = 32; // +4 for label space
     
     switch (quadrant) {
       case 'lower_left':
@@ -258,9 +258,9 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
       case 'lower_right':
         return { x: COLS - padding - gridWidth, y: ROWS - padding - gridHeight };
       case 'upper_left':
-        return { x: padding, y: padding + 10 };  // +10 for label
+        return { x: padding, y: padding + 4 };  // +4 for label
       case 'upper_right':
-        return { x: COLS - padding - gridWidth, y: padding + 10 };
+        return { x: COLS - padding - gridWidth, y: padding + 4 };
       default:
         return { x: padding, y: ROWS - padding - gridHeight };
     }
@@ -327,17 +327,17 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
             if (quadrantMoods.length === 0) return null;
             
             const pos = getQuadrantPosition(quadrant);
-            const boxSize = 50;  // MUCH LARGER
-            const gap = 8;       // Bigger gap
+            const boxSize = 12;  // Much smaller
+            const gap = 2;       // Smaller gap
             
             return (
               <g key={quadrant} className="vibe-check-quadrant">
-                {/* Label - bigger */}
+                {/* Label - smaller */}
                 <text 
                   x={pos.x} 
-                  y={pos.y - 4} 
+                  y={pos.y - 1} 
                   className="fill-foreground font-semibold"
-                  style={{ fontSize: '10px' }}
+                  style={{ fontSize: '4px' }}
                 >
                   Vibe Check
                 </text>
@@ -363,13 +363,13 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
                         y={boxY}
                         width={boxSize}
                         height={boxSize}
-                        rx={4}
+                        rx={1.5}
                         fill={`hsl(${mood.color_hsl})`}
                         opacity={cooldown > 0 ? 0.5 : 0.9}
                         className="transition-all"
                         style={{
                           filter: tappedEmoji === mood.emoji 
-                            ? `drop-shadow(0 0 5px hsl(${mood.color_hsl}))` 
+                            ? `drop-shadow(0 0 2px hsl(${mood.color_hsl}))` 
                             : undefined
                         }}
                       >
@@ -383,13 +383,13 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
                         )}
                       </rect>
                       
-                      {/* Emoji - MUCH larger and centered */}
+                      {/* Emoji - smaller and centered */}
                       <text
                         x={boxX + boxSize / 2}
-                        y={boxY + boxSize / 2 + 5}
+                        y={boxY + boxSize / 2 + 2}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        style={{ fontSize: '24px' }}
+                        style={{ fontSize: '8px' }}
                       >
                         {mood.emoji}
                       </text>
@@ -404,9 +404,9 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
                 {cooldown > 0 && (
                   <text
                     x={pos.x}
-                    y={pos.y + (boxSize + gap) * 2 + 8}
+                    y={pos.y + (boxSize + gap) * 2 + 3}
                     className="fill-primary font-mono"
-                    style={{ fontSize: '9px' }}
+                    style={{ fontSize: '4px' }}
                   >
                     {cooldown}s
                   </text>
