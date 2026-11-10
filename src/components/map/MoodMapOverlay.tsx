@@ -28,8 +28,9 @@ const MOOD_COLORS = {
   focus: "hsl(45 80% 55%)"        // Gold
 };
 
-const DOT_STEP = 10;
-const DOT_LAT_TOP = 70;
+// Map projection constants - MUST match worldDots.ts for accurate plotting
+const DOT_STEP = 2;     // was 10 (wrong)
+const DOT_LAT_TOP = 82; // was 70 (wrong)
 
 const project = (lat: number, lon: number) => ({
   x: (lon + 180) / DOT_STEP,
