@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CityMoodDot } from "./CityMoodDot";
+import { findCity } from "@/lib/cities";
 
 interface MoodCity {
   city: string;
@@ -98,18 +99,30 @@ export function MoodMapOverlay({ width, height, cities }: MoodMapOverlayProps) {
     return null;
   }
 
-  // Debug: show available cities and mood lookups
-  console.log("[MoodMapOverlay] Available cities:", cities.map(c => c.city));
-  console.log("[MoodMapOverlay] Looking for mood cities:", cityMoods.map(m => m.city));
-
   return (
     <g className="mood-overlay">
       {cityMoods.map((cityMood) => {
-        const cityCoords = cities.find(c => 
+        // Try listener map spots first (for high-traffic cities with 3+ listeners)
+        let cityCoords = cities.find(c => 
           c.city.toLowerCase() === cityMood.city.toLowerCase()
         );
         
-        console.log(`[MoodMapOverlay] Match for "${cityMood.city}":`, cityCoords ? `${cityCoords.city} (${cityCoords.lat}, ${cityCoords.lng})` : "NOT FOUND");
+        // Fallback to major cities database (for low-traffic cities)
+        if (!cityCoords) {
+          const majorCity = findCity(cityMood.city);
+          if (majorCity) {
+            cityCoords = {
+              city: majorCity.city,
+              lat: majorCity.lat,
+              lng: majorCity.lng
+            };
+            console.log(`[MoodMapOverlay] Using major cities DB for "${cityMood.city}"`);
+          } else {
+            console.log(`[MoodMapOverlay] City "${cityMood.city}" not found in listener spots or major cities DB`);
+          }
+        } else {
+          console.log(`[MoodMapOverlay] Using listener spot for "${cityMood.city}"`);
+        }
         
         if (!cityCoords) return null;
 
