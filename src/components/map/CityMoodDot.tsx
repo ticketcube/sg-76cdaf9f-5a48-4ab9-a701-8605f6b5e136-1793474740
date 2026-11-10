@@ -44,37 +44,39 @@ export function CityMoodDot({
       {/* Debug indicator - small text showing current mood */}
       <title>{`${city}: ${mood} (${new Date(timestamp).toLocaleTimeString()})`}</title>
       
-      {/* Pulse ring when mood changes */}
+      {/* Pulse ring when mood changes - Triple White Flash */}
       {isPulsing && (
         <circle
           cx={x}
           cy={y}
-          r={0.4}
+          r={1.5}
           fill="none"
-          stroke={currentColor}
-          strokeWidth="0.15"
-          opacity="0.8"
+          stroke="white"
+          strokeWidth="0.8"
+          opacity="1"
         >
           <animate
             attributeName="r"
-            values="0.4;1.5"
-            dur="0.8s"
+            values="1.5;6"
+            dur="0.4s"
+            repeatCount="3"
             fill="freeze"
           />
           <animate
             attributeName="opacity"
-            values="0.8;0"
-            dur="0.8s"
+            values="1;0"
+            dur="0.4s"
+            repeatCount="3"
             fill="freeze"
           />
         </circle>
       )}
 
-      {/* Main mood dot - same size as base listener dot */}
+      {/* Main mood dot - made much larger to be visible over listener dots */}
       <circle
         cx={x}
         cy={y}
-        r={0.4}
+        r={2.5}
         fill={currentColor}
         opacity="0.9"
         data-debug={debugLog}
@@ -84,10 +86,10 @@ export function CityMoodDot({
       <circle
         cx={x}
         cy={y}
-        r={0.5}
+        r={4}
         fill={currentColor}
-        opacity="0.2"
-        filter="blur(0.15)"
+        opacity="0.3"
+        filter="blur(0.2)"
       />
     </g>
   );
