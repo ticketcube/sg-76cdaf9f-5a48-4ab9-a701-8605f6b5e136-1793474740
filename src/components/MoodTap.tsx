@@ -167,6 +167,12 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
   }, [cooldown]);
 
   const handleMoodTap = async (mood: Mood) => {
+    console.log(`[MoodTap] Button tapped: ${mood.emoji}`);
+    
+    // IMMEDIATE visual feedback - this must happen first, synchronously
+    setTappedEmoji(mood.emoji);
+    const flashTimer = setTimeout(() => setTappedEmoji(null), 600);
+
     // Check client-side rate limit
     const now = Date.now();
     const timeSince = (now - lastSubmit) / 1000;
@@ -175,19 +181,18 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
       const remaining = Math.ceil(15 - timeSince);
       setCooldown(remaining);
       toast.error(`Wait ${remaining}s before changing mood again`);
-      return;
+      return; // Visual feedback still happened
     }
 
-    // Visual feedback
-    setTappedEmoji(mood.emoji);
-    setTimeout(() => setTappedEmoji(null), 600);
-
+    // All async work wrapped in try-catch so errors don't break the flash
     try {
       // Get current session
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        throw new Error("No active session. Please refresh the page.");
+        console.error("[MoodTap] No user session found");
+        toast.error("Session expired. Please refresh the page.");
+        return;
       }
 
       // Check rate limit via database
@@ -211,13 +216,22 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
         }
       }
 
-      // Get or detect city
+      // Get or detect city (with timeout to not block forever)
       let city = userCity;
-      if (!city || city === "Unknown") {
-        city = await detectUserCity();
+      if (!city || city === "Unknown" || city === "Local") {
+        console.log("[MoodTap] Need to detect city...");
+        
+        // Use a Promise.race to timeout city detection after 3 seconds
+        const cityDetectionPromise = detectUserCity();
+        const timeoutPromise = new Promise<string>((resolve) => {
+          setTimeout(() => resolve("Unknown"), 3000);
+        });
+        
+        city = await Promise.race([cityDetectionPromise, timeoutPromise]);
+        console.log(`[MoodTap] City detected: ${city}`);
       }
 
-      console.log(`[MoodTap] Submitting mood for city: ${city}`);
+      console.log(`[MoodTap] Submitting mood: ${mood.category_name} from ${city}`);
 
       // Insert mood directly to Supabase
       const { error: insertError } = await supabase
@@ -226,27 +240,30 @@ export function MoodTap({ nowPlaying }: MoodTapProps) {
           user_id: user.id,
           city,
           mood_category: mood.category_name,
-          mood_value: 0, // Legacy field, keeping for backwards compat
+          mood_value: 0,
           song_title: nowPlaying?.title || "Unknown",
           song_artist: nowPlaying?.artist || "Unknown",
           song_id: nowPlaying?.id
         });
 
       if (insertError) {
-        console.error("[MoodTap] Insert error:", insertError);
+        console.error("[MoodTap] Database insert error:", insertError);
         throw insertError;
       }
 
       setLastSubmit(now);
-      console.log(`[MoodTap] ✓ Mood submitted: ${mood.category_name} from ${city}`);
+      console.log(`[MoodTap] ✓ Success! Mood saved for ${city}`);
       
       toast.success(`${mood.emoji} ${mood.label}`, {
-        description: `Mood set for ${city}`,
+        description: city !== "Unknown" ? `Mood set for ${city}` : "Mood recorded",
         duration: 2000
       });
     } catch (err) {
-      console.error("Mood submission error:", err);
+      console.error("[MoodTap] Error during submission:", err);
       toast.error(err instanceof Error ? err.message : "Failed to update mood");
+    } finally {
+      // Ensure flash timer is cleared
+      clearTimeout(flashTimer);
     }
   };
 
