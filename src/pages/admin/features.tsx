@@ -16,7 +16,6 @@ interface FeatureFlag {
   id: string;
   flag_name: string;
   enabled: boolean;
-  description: string | null;
 }
 
 interface MoodCategory {
@@ -45,10 +44,10 @@ export default function AdminFeatures() {
     try {
       setLoading(true);
 
-      // Fetch feature flags (explicitly handle all fields)
+      // Fetch feature flags
       const { data: flagsData, error: flagsError } = await supabase
         .from("feature_flags")
-        .select("id, flag_name, enabled, description")
+        .select("id, flag_name, enabled")
         .order("flag_name");
 
       if (flagsError) throw flagsError;
@@ -250,11 +249,6 @@ export default function AdminFeatures() {
                         {flag.enabled ? "ON" : "OFF"}
                       </Badge>
                     </div>
-                    {flag.description && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {flag.description}
-                      </p>
-                    )}
                   </div>
                   <Switch
                     id={`flag-${flag.id}`}
