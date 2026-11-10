@@ -27,7 +27,6 @@ interface MoodCategory {
   emoji: string;
   label: string;
   color_hsl: string;
-  description?: string;
 }
 
 interface ListenerMapProps {
@@ -89,7 +88,7 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
 
           const { data: moodData } = await supabase
             .from("mood_categories")
-            .select("id, category_name, emoji, label, color_hsl, description")
+            .select("id, category_name, emoji, label, color_hsl")
             .eq("enabled", true)
             .order("display_order");
 
@@ -206,7 +205,6 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
 
       setLastSubmit(now);
       toast.success(`${mood.emoji} ${mood.label}`, {
-        description: mood.description || "",
         duration: 2000
       });
     } catch (err) {
@@ -258,7 +256,7 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
                         ? `drop-shadow(0 0 8px hsl(${mood.color_hsl}))` 
                         : undefined
                     }}
-                    title={`${mood.label}${mood.description ? ` - ${mood.description}` : ""}`}
+                    title={mood.label}
                     aria-label={mood.label}
                   >
                     <span className="text-sm">{mood.emoji}</span>
