@@ -71,11 +71,21 @@ export function ListenerMap() {
   const total = data?.total ?? 0;
 
   // Convert spots to city list for mood overlay
-  const cities = data?.spots.map(spot => ({
-    city: spot.label,
-    lat: spot.lat,
-    lng: spot.lon
-  })) || [];
+  // Extract city name from labels like "Los Angeles, United States" → "Los Angeles"
+  const cities = data?.spots
+    .map(spot => {
+      const cityName = spot.label.includes(',') 
+        ? spot.label.split(',')[0].trim() 
+        : spot.label;
+      return {
+        city: cityName,
+        lat: spot.lat,
+        lng: spot.lon
+      };
+    })
+    .filter(c => c.city !== "Unknown" && c.city !== "United States") || [];
+
+  console.log("[ListenerMap] Cities passed to MoodMapOverlay:", cities.map(c => c.city));
 
   return (
     <div className="bg-accent rounded-lg p-4 w-full">
