@@ -253,7 +253,7 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
     
     switch (quadrant) {
       case 'lower_left':
-        return { x: 3, y: ROWS - 3 - gridHeight };  // Moved down (less subtraction) and left (smaller x)
+        return { x: 3, y: ROWS - 1 - gridHeight };  // Moved down (less subtraction) and left (smaller x)
       case 'lower_right':
         return { x: COLS - 8 - gridWidth, y: ROWS - 8 - gridHeight };
       case 'upper_left':
