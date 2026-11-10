@@ -248,21 +248,20 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
 
   // Calculate quadrant positions (in SVG coordinates)
   const getQuadrantPosition = (quadrant: string) => {
-    const padding = 8;
     const gridWidth = 28;  // Space for 2x2 grid of 12x12 boxes with gaps
     const gridHeight = 32; // +4 for label space
     
     switch (quadrant) {
       case 'lower_left':
-        return { x: padding, y: ROWS - padding - gridHeight };
+        return { x: 3, y: ROWS - 4 - gridHeight };  // Moved down (less subtraction) and left (smaller x)
       case 'lower_right':
-        return { x: COLS - padding - gridWidth, y: ROWS - padding - gridHeight };
+        return { x: COLS - 8 - gridWidth, y: ROWS - 8 - gridHeight };
       case 'upper_left':
-        return { x: padding, y: padding + 4 };  // +4 for label
+        return { x: 8, y: 8 + 4 };  // +4 for label
       case 'upper_right':
-        return { x: COLS - padding - gridWidth, y: padding + 4 };
+        return { x: COLS - 8 - gridWidth, y: 8 + 4 };
       default:
-        return { x: padding, y: ROWS - padding - gridHeight };
+        return { x: 3, y: ROWS - 4 - gridHeight };
     }
   };
 
