@@ -1,7 +1,7 @@
 import { useEffect, useState, memo, useRef } from "react";
 import { Headphones } from "lucide-react";
 import { toast } from "sonner";
-import { geoEqualEarth } from "d3-geo-projection";
+import { geoEqualEarth } from "d3-geo";
 import { DOT_LAT_TOP, DOT_STEP, LAND_ROWS } from "@/lib/worldDots";
 import { MapOverlayManager } from "./map/MapOverlayManager";
 import { MoodMapOverlay } from "./map/MoodMapOverlay";
