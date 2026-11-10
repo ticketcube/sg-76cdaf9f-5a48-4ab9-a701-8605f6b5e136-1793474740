@@ -26,7 +26,7 @@ interface MoodCategory {
   color_hsl: string;
   display_order: number;
   enabled: boolean;
-  quadrant_position: string;
+  quadrant_position: string | null;
 }
 
 export default function AdminFeatures() {

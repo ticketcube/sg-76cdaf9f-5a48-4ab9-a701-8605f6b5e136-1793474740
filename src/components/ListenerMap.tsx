@@ -27,7 +27,7 @@ interface MoodCategory {
   emoji: string;
   label: string;
   color_hsl: string;
-  quadrant_position: string;
+  quadrant_position: string | null;
 }
 
 interface ListenerMapProps {
