@@ -249,8 +249,8 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
   // Calculate quadrant positions (in SVG coordinates)
   const getQuadrantPosition = (quadrant: string) => {
     const padding = 8;
-    const gridWidth = 76;  // Space for 2x2 grid of 35x35 boxes with gaps
-    const gridHeight = 82; // +6 for label space
+    const gridWidth = 108;  // Space for 2x2 grid of 50x50 boxes with gaps
+    const gridHeight = 118; // +10 for label space
     
     switch (quadrant) {
       case 'lower_left':
@@ -258,9 +258,9 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
       case 'lower_right':
         return { x: COLS - padding - gridWidth, y: ROWS - padding - gridHeight };
       case 'upper_left':
-        return { x: padding, y: padding + 8 };  // +8 for label
+        return { x: padding, y: padding + 10 };  // +10 for label
       case 'upper_right':
-        return { x: COLS - padding - gridWidth, y: padding + 8 };
+        return { x: COLS - padding - gridWidth, y: padding + 10 };
       default:
         return { x: padding, y: ROWS - padding - gridHeight };
     }
@@ -327,17 +327,17 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
             if (quadrantMoods.length === 0) return null;
             
             const pos = getQuadrantPosition(quadrant);
-            const boxSize = 35;  // MUCH larger
-            const gap = 6;       // Bigger gap
+            const boxSize = 50;  // MUCH LARGER
+            const gap = 8;       // Bigger gap
             
             return (
               <g key={quadrant} className="vibe-check-quadrant">
-                {/* Label - much bigger */}
+                {/* Label - bigger */}
                 <text 
                   x={pos.x} 
-                  y={pos.y - 3} 
+                  y={pos.y - 4} 
                   className="fill-foreground font-semibold"
-                  style={{ fontSize: '8px' }}
+                  style={{ fontSize: '10px' }}
                 >
                   Vibe Check
                 </text>
@@ -363,13 +363,13 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
                         y={boxY}
                         width={boxSize}
                         height={boxSize}
-                        rx={3}
+                        rx={4}
                         fill={`hsl(${mood.color_hsl})`}
                         opacity={cooldown > 0 ? 0.5 : 0.9}
                         className="transition-all"
                         style={{
                           filter: tappedEmoji === mood.emoji 
-                            ? `drop-shadow(0 0 4px hsl(${mood.color_hsl}))` 
+                            ? `drop-shadow(0 0 5px hsl(${mood.color_hsl}))` 
                             : undefined
                         }}
                       >
@@ -386,10 +386,10 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
                       {/* Emoji - MUCH larger and centered */}
                       <text
                         x={boxX + boxSize / 2}
-                        y={boxY + boxSize / 2 + 4}
+                        y={boxY + boxSize / 2 + 5}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        style={{ fontSize: '18px' }}
+                        style={{ fontSize: '24px' }}
                       >
                         {mood.emoji}
                       </text>
@@ -404,9 +404,9 @@ export function ListenerMap({ nowPlaying }: ListenerMapProps) {
                 {cooldown > 0 && (
                   <text
                     x={pos.x}
-                    y={pos.y + (boxSize + gap) * 2 + 5}
+                    y={pos.y + (boxSize + gap) * 2 + 8}
                     className="fill-primary font-mono"
-                    style={{ fontSize: '7px' }}
+                    style={{ fontSize: '9px' }}
                   >
                     {cooldown}s
                   </text>
