@@ -35,6 +35,14 @@ export default async function handler(
     return res.status(500).json({ error: "AIMC not configured" });
   }
 
+  console.log("[AIMC Upload] Request:", {
+    filename,
+    fileSize,
+    contentType,
+    connectorId,
+    uploadFolder
+  });
+
   try {
     const response = await fetch(`${baseUrl}/assets/upload`, {
       method: "POST",
@@ -54,27 +62,45 @@ export default async function handler(
       })
     });
 
+    const text = await response.text();
+    console.log("[AIMC Upload] Response status:", response.status);
+    console.log("[AIMC Upload] Response body:", text);
+
     if (!response.ok) {
-      const text = await response.text();
+      let errorDetails = text;
+      try {
+        const errorJson = JSON.parse(text);
+        errorDetails = errorJson.message || errorJson.error || text;
+        
+        // Add helpful context for common errors
+        if (errorDetails.includes("CONNECTOR_UPLOAD_FORBIDDEN")) {
+          errorDetails += ` (Connector ID: ${connectorId}). Verify this connector ID has upload permissions in AIMC dashboard.`;
+        }
+      } catch {
+        // text is not JSON, use as-is
+      }
+      
       return res.status(response.status).json({ 
         error: "Failed to generate upload URL",
-        details: text 
+        details: errorDetails 
       });
     }
 
-    const rawData = await response.json();
+    const rawData = JSON.parse(text);
     const data = unwrapAIMC(rawData);
     const uploadUrl = data.url;
     const key = data.key;
     const bucket = data.bucket;
 
     if (!uploadUrl) {
+      console.error("[AIMC Upload] No upload URL in response:", rawData);
       return res.status(500).json({ error: "No upload URL in response" });
     }
 
+    console.log("[AIMC Upload] Success - generated presigned URL");
     res.status(200).json({ uploadUrl, key, bucket });
   } catch (error: any) {
-    console.error("Failed to generate upload URL:", error);
+    console.error("[AIMC Upload] Exception:", error);
     res.status(500).json({ error: error.message || "Failed to generate upload URL" });
   }
 }

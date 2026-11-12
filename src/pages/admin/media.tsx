@@ -136,7 +136,16 @@ export default function MediaPage() {
 
     if (!urlRes.ok) {
       const error = await urlRes.json();
-      throw new Error(error.details || error.error || "Failed to generate AIMC upload URL");
+      let errorMessage = error.details || error.error || "Failed to generate AIMC upload URL";
+      
+      // Enhanced error messaging for common issues
+      if (errorMessage.includes("CONNECTOR_UPLOAD_FORBIDDEN")) {
+        errorMessage = "AIMC upload forbidden: The connector ID may be incorrect or lacks upload permissions. Check AIMC dashboard for the correct upload connector ID and update AIMC_UPLOAD_CONNECTOR_ID in environment settings.";
+      } else if (errorMessage.includes("UNAUTHORIZED") || errorMessage.includes("FORBIDDEN")) {
+        errorMessage = "AIMC access denied: Verify API key has 'connectors:upload' and 'assets:upload' permissions.";
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const { uploadUrl, key } = await urlRes.json();
