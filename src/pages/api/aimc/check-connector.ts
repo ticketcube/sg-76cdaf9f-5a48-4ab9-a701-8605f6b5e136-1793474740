@@ -40,7 +40,7 @@ export default async function handler(
     const connectorsRes = await fetch(`${baseUrl}/connectors`, {
       method: "GET",
       headers: {
-        "X-API-Key": apiKey,
+        "Authorization": `Bearer ${apiKey}`,
         "Accept": "application/json"
       }
     });
@@ -86,7 +86,7 @@ export default async function handler(
     const connectorRes = await fetch(`${baseUrl}/connectors/${connectorId}`, {
       method: "GET",
       headers: {
-        "X-API-Key": apiKey,
+        "Authorization": `Bearer ${apiKey}`,
         "Accept": "application/json"
       }
     });
@@ -109,7 +109,7 @@ export default async function handler(
     const uploadTestRes = await fetch(`${baseUrl}/assets/upload`, {
       method: "POST",
       headers: {
-        "X-API-Key": apiKey,
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "Accept": "application/json"
       },
