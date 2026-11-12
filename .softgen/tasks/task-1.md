@@ -1,22 +1,28 @@
 ---
-title: Global Layout and Sticky Audio Player
+title: DJ Streaming Console
 status: done
 priority: urgent
 type: feature
+tags: [dj, streaming, azuracast]
+created_by: agent
+created_at: 2026-11-12T23:36:00Z
+position: 1
 ---
 
 ## Notes
-The station is "audio first", meaning the stream must persist across page navigation. The player provides the core utility of the app and needs to feel premium and tactile.
+Create a custom DJ streaming page that wraps the AzuraCast streaming interface in the OTW brand experience. Phase 1 implementation focuses on core streaming functionality with embedded controls.
 
 ## Checklist
-- [x] Apply design system tokens to CSS and configure fonts (Sora, IBM Plex Sans, IBM Plex Mono)
-- [x] Create a persistent global layout wrapper with a minimal top navigation bar (Logo, Schedule, Shows)
-- [x] Build a sticky audio player docked to the bottom of the screen
-- [x] Add player controls: Play/Pause button, volume slider, "Live" badge, and text placeholder for "Now Playing: OTW Playlist"
-- [x] Ensure the player remains visible and interactive on both desktop and mobile viewports
-- [x] Connect to live AzuraCast stream and fetch now-playing metadata every 15 seconds
+- [x] Create `/dj` landing page with navigation to streaming console
+- [x] Create `/dj/stream` page with embedded AzuraCast DJ interface
+- [x] Add role-based protection (require `otwl-dj` role)
+- [x] Display connection info (server, port, mount point)
+- [x] Add quick tips section for DJs
+- [x] Include fallback link to advanced AzuraCast console
+- [x] Apply OTW design system (Crimson primary, near-black background)
 
 ## Acceptance
-- The app has a dark premium theme applied across the surface.
-- The audio player is fixed at the bottom of the screen and controls are visually responsive to interaction.
-- Player persists across page navigation and shows live song information.
+- DJ role users can access `/dj` and see the portal landing page
+- Streaming console at `/dj/stream` shows embedded AzuraCast controls
+- Connection details are clearly visible for broadcasting software setup
+- Advanced console link provides fallback to native AzuraCast page
