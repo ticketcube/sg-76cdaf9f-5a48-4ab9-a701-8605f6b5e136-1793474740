@@ -6,14 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Music, Search, Loader2, Upload, Save, AlertCircle } from "lucide-react";
+import { Music, Search, Loader2, Upload, Save, AlertCircle, Video, FileAudio, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface MediaFile {
-  id: string; // The unique ID of the file in AzuraCast
+  id: string;
   path: string;
   media: {
     title: string;
@@ -33,6 +34,8 @@ interface Playlist {
   name: string;
 }
 
+type UploadDestination = "aimc" | "azuracast" | "both";
+
 export default function MediaPage() {
   const [media, setMedia] = useState<MediaFile[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -43,6 +46,7 @@ export default function MediaPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadDestination, setUploadDestination] = useState<UploadDestination>("aimc");
   const { toast } = useToast();
 
   const loadData = async () => {
@@ -116,15 +120,87 @@ export default function MediaPage() {
     }
   };
 
+  const uploadToAIMC = async (file: File) => {
+    setUploadProgress(20);
+
+    // Generate presigned upload URL
+    const urlRes = await fetch("/api/aimc/generate-upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: file.name,
+        fileSize: file.size,
+        contentType: file.type
+      })
+    });
+
+    if (!urlRes.ok) {
+      const error = await urlRes.json();
+      throw new Error(error.details || error.error || "Failed to generate AIMC upload URL");
+    }
+
+    const { uploadUrl, key } = await urlRes.json();
+
+    setUploadProgress(40);
+
+    // Upload directly to S3 via presigned URL
+    const uploadRes = await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: {
+        "Content-Type": file.type
+      }
+    });
+
+    if (!uploadRes.ok) {
+      throw new Error("Failed to upload to AIMC storage");
+    }
+
+    setUploadProgress(70);
+
+    return { key, success: true };
+  };
+
+  const uploadToAzuraCast = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("/api/media", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.details || error.error || "AzuraCast upload failed");
+    }
+
+    return await response.json();
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith("audio/")) {
+    const isAudio = file.type.startsWith("audio/");
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+
+    // Validate destination compatibility
+    if (uploadDestination === "azuracast" && !isAudio) {
       toast({
-        title: "Invalid File",
-        description: "Please select an audio file",
+        title: "Invalid Selection",
+        description: "AzuraCast only accepts audio files. Select AIMC for video or other media.",
+        variant: "destructive"
+      });
+      event.target.value = "";
+      return;
+    }
+
+    if (uploadDestination === "both" && !isAudio) {
+      toast({
+        title: "Invalid Selection",
+        description: "Both destinations only works for audio files. Video and other media go to AIMC only.",
         variant: "destructive"
       });
       event.target.value = "";
@@ -135,34 +211,35 @@ export default function MediaPage() {
     setUploadProgress(0);
 
     try {
-      setUploadProgress(30);
+      setUploadProgress(10);
+
+      const destinations: string[] = [];
       
-      // Create form data for direct AzuraCast upload
-      const formData = new FormData();
-      formData.append("file", file);
+      // Upload to AIMC
+      if (uploadDestination === "aimc" || uploadDestination === "both") {
+        await uploadToAIMC(file);
+        destinations.push("AIMC");
+        setUploadProgress(70);
+      }
 
-      setUploadProgress(50);
-
-      // Upload directly to AzuraCast
-      const response = await fetch("/api/media", {
-        method: "POST",
-        body: formData
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.details || error.error || "Upload failed");
+      // Upload to AzuraCast (only for audio)
+      if ((uploadDestination === "azuracast" || uploadDestination === "both") && isAudio) {
+        setUploadProgress(uploadDestination === "both" ? 75 : 50);
+        await uploadToAzuraCast(file);
+        destinations.push("AzuraCast");
       }
 
       setUploadProgress(100);
       
       toast({
         title: "Upload Complete",
-        description: `${file.name} uploaded successfully`
+        description: `${file.name} uploaded to ${destinations.join(" and ")}`
       });
 
-      // Refresh media list
-      await loadData();
+      // Refresh media list if uploaded to AzuraCast
+      if (destinations.includes("AzuraCast")) {
+        await loadData();
+      }
       
       // Reset
       setTimeout(() => {
@@ -193,13 +270,27 @@ export default function MediaPage() {
     );
   });
 
+  const getFileIcon = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'].includes(ext || '')) {
+      return <FileAudio className="w-5 h-5 text-muted-foreground" />;
+    }
+    if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext || '')) {
+      return <Video className="w-5 h-5 text-muted-foreground" />;
+    }
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
+      return <ImageIcon className="w-5 h-5 text-muted-foreground" />;
+    }
+    return <Music className="w-5 h-5 text-muted-foreground" />;
+  };
+
   return (
     <ProtectedRoute requireStaff>
       <div className="container mx-auto py-8 px-4 max-w-7xl">
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">Media Library</h1>
           <p className="text-muted-foreground">
-            Browse station media and manage playlist assignments.
+            Upload media to AIMC warehouse or manage AzuraCast station library.
           </p>
         </div>
 
@@ -208,15 +299,43 @@ export default function MediaPage() {
           <CardHeader>
             <CardTitle>Upload Media</CardTitle>
             <CardDescription>
-              Upload audio files directly to AzuraCast station library
+              Upload files to AIMC media lake (all formats) or AzuraCast station library (audio only)
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              <div>
+                <Label className="mb-3 block">Upload Destination</Label>
+                <RadioGroup 
+                  value={uploadDestination} 
+                  onValueChange={(value) => setUploadDestination(value as UploadDestination)}
+                  disabled={uploading}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="aimc" id="dest-aimc" />
+                    <Label htmlFor="dest-aimc" className="font-normal cursor-pointer">
+                      AIMC Media Lake (all formats - video, audio, images)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="azuracast" id="dest-azuracast" />
+                    <Label htmlFor="dest-azuracast" className="font-normal cursor-pointer">
+                      AzuraCast Station (audio only)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="both" id="dest-both" />
+                    <Label htmlFor="dest-both" className="font-normal cursor-pointer">
+                      Both AIMC + AzuraCast (audio only)
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
               <div className="flex items-center gap-4">
                 <Input
                   type="file"
-                  accept="audio/*"
+                  accept={uploadDestination === "azuracast" ? "audio/*" : "*"}
                   onChange={handleFileUpload}
                   disabled={uploading}
                   className="cursor-pointer"
@@ -244,17 +363,24 @@ export default function MediaPage() {
                 <div className="space-y-2">
                   <Progress value={uploadProgress} className="w-full" />
                   <p className="text-xs text-muted-foreground text-center">
-                    {uploadProgress < 50 ? "Preparing upload..." : "Uploading to AzuraCast..."}
-                    {uploadProgress === 100 && "Complete!"}
+                    {uploadProgress < 40 ? "Preparing upload..." : 
+                     uploadProgress < 70 ? "Uploading to AIMC..." :
+                     uploadProgress < 100 ? "Finalizing..." : "Complete!"}
                   </p>
                 </div>
               )}
               <div className="flex items-start gap-2 text-xs text-muted-foreground">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <p>
-                  Supported formats: MP3, AAC, FLAC, WAV, OGG. 
-                  Files are uploaded to the AzuraCast media library and available immediately.
-                </p>
+                <div>
+                  <p className="mb-1">
+                    <strong>AIMC:</strong> Supports all media types (video, audio, images, documents). 
+                    Long-term archive and source material warehouse.
+                  </p>
+                  <p>
+                    <strong>AzuraCast:</strong> Audio only (MP3, AAC, FLAC, WAV, OGG). 
+                    Station broadcast library with playlist management.
+                  </p>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -265,7 +391,12 @@ export default function MediaPage() {
           <Card className="lg:col-span-2">
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle>Files</CardTitle>
+                <div>
+                  <CardTitle>AzuraCast Station Files</CardTitle>
+                  <CardDescription className="mt-1">
+                    Audio files available for broadcast scheduling
+                  </CardDescription>
+                </div>
                 <div className="relative w-64">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -294,7 +425,7 @@ export default function MediaPage() {
                     >
                       <div className="flex items-center gap-4 overflow-hidden">
                         <div className="w-10 h-10 bg-muted rounded flex items-center justify-center flex-shrink-0">
-                          <Music className="w-5 h-5 text-muted-foreground" />
+                          {getFileIcon(file.path)}
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium truncate">

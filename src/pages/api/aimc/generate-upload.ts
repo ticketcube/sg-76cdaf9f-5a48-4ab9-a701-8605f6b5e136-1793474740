@@ -20,7 +20,7 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { filename, fileSize } = req.body;
+  const { filename, fileSize, contentType } = req.body;
 
   if (!filename || !fileSize) {
     return res.status(400).json({ error: "Filename and fileSize required" });
@@ -46,7 +46,7 @@ export default async function handler(
       body: JSON.stringify({
         connector_id: connectorId,
         filename,
-        content_type: "audio/mpeg",
+        content_type: contentType || "application/octet-stream",
         file_size: fileSize,
         path: uploadFolder,
         collection_ids: [],
