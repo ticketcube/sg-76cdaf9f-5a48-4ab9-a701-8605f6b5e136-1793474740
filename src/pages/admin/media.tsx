@@ -123,32 +123,28 @@ export default function MediaPage() {
   const uploadToAIMC = async (file: File) => {
     setUploadProgress(20);
 
-    // Generate presigned upload URL
-    const urlRes = await fetch("/api/aimc/generate-upload", {
+    // Generate presigned S3 upload URL
+    const urlRes = await fetch("/api/s3/generate-upload-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         filename: file.name,
-        fileSize: file.size,
         contentType: file.type
       })
     });
 
     if (!urlRes.ok) {
       const error = await urlRes.json();
-      let errorMessage = error.details || error.error || "Failed to generate AIMC upload URL";
+      let errorMessage = error.details || error.error || "Failed to generate S3 upload URL";
       
-      // Enhanced error messaging for common issues
-      if (errorMessage.includes("CONNECTOR_UPLOAD_FORBIDDEN")) {
-        errorMessage = "AIMC upload forbidden: The connector ID may be incorrect or lacks upload permissions. Check AIMC dashboard for the correct upload connector ID and update AIMC_UPLOAD_CONNECTOR_ID in environment settings.";
-      } else if (errorMessage.includes("UNAUTHORIZED") || errorMessage.includes("FORBIDDEN")) {
-        errorMessage = "AIMC access denied: Verify API key has 'connectors:upload' and 'assets:upload' permissions.";
+      if (errorMessage.includes("AWS S3 not configured")) {
+        errorMessage = "AWS S3 credentials not configured. Add AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_S3_BUCKET to environment settings.";
       }
       
       throw new Error(errorMessage);
     }
 
-    const { uploadUrl, key } = await urlRes.json();
+    const { uploadUrl, key, bucket } = await urlRes.json();
 
     setUploadProgress(40);
 
@@ -162,12 +158,18 @@ export default function MediaPage() {
     });
 
     if (!uploadRes.ok) {
-      throw new Error("Failed to upload to AIMC storage");
+      throw new Error(`S3 upload failed: ${uploadRes.status} ${uploadRes.statusText}`);
     }
 
     setUploadProgress(70);
 
-    return { key, success: true };
+    console.log("[Upload Complete] File uploaded to S3:", {
+      bucket,
+      key,
+      filename: file.name
+    });
+
+    return { key, bucket, success: true };
   };
 
   const uploadToAzuraCast = async (file: File) => {
