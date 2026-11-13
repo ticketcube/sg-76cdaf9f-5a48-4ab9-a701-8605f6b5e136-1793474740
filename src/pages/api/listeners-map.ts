@@ -12,7 +12,7 @@ const STATION = process.env.AZURACAST_STATION_ID || process.env.NEXT_PUBLIC_STAT
 
 const CACHE_MS = 30_000;
 // A bucket shows a city name only when at least this many listeners share it.
-const MIN_FOR_CITY = 3;
+const MIN_FOR_CITY = 1;
 
 interface AzuraListener {
   hash?: string;
