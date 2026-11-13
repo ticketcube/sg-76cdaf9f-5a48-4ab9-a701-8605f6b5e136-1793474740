@@ -20,7 +20,7 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { filename, fileSize, contentType } = req.body;
+  const { filename, fileSize } = req.body;
 
   if (!filename || !fileSize) {
     return res.status(400).json({ error: "Filename and fileSize required" });
@@ -35,26 +35,18 @@ export default async function handler(
     return res.status(500).json({ error: "AIMC not configured" });
   }
 
-  console.log("[AIMC Upload] Request:", {
-    filename,
-    fileSize,
-    contentType,
-    connectorId,
-    uploadFolder
-  });
-
   try {
     const response = await fetch(`${baseUrl}/assets/upload`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
+        "X-API-Key": apiKey,
         "Content-Type": "application/json",
         "Accept": "application/json"
       },
       body: JSON.stringify({
         connector_id: connectorId,
         filename,
-        content_type: contentType || "application/octet-stream",
+        content_type: "audio/mpeg",
         file_size: fileSize,
         path: uploadFolder,
         collection_ids: [],
@@ -62,45 +54,27 @@ export default async function handler(
       })
     });
 
-    const text = await response.text();
-    console.log("[AIMC Upload] Response status:", response.status);
-    console.log("[AIMC Upload] Response body:", text);
-
     if (!response.ok) {
-      let errorDetails = text;
-      try {
-        const errorJson = JSON.parse(text);
-        errorDetails = errorJson.message || errorJson.error || text;
-        
-        // Add helpful context for common errors
-        if (errorDetails.includes("CONNECTOR_UPLOAD_FORBIDDEN")) {
-          errorDetails += ` (Connector ID: ${connectorId}). Verify this connector ID has upload permissions in AIMC dashboard.`;
-        }
-      } catch {
-        // text is not JSON, use as-is
-      }
-      
+      const text = await response.text();
       return res.status(response.status).json({ 
         error: "Failed to generate upload URL",
-        details: errorDetails 
+        details: text 
       });
     }
 
-    const rawData = JSON.parse(text);
+    const rawData = await response.json();
     const data = unwrapAIMC(rawData);
     const uploadUrl = data.url;
     const key = data.key;
     const bucket = data.bucket;
 
     if (!uploadUrl) {
-      console.error("[AIMC Upload] No upload URL in response:", rawData);
       return res.status(500).json({ error: "No upload URL in response" });
     }
 
-    console.log("[AIMC Upload] Success - generated presigned URL");
     res.status(200).json({ uploadUrl, key, bucket });
   } catch (error: any) {
-    console.error("[AIMC Upload] Exception:", error);
+    console.error("Failed to generate upload URL:", error);
     res.status(500).json({ error: error.message || "Failed to generate upload URL" });
   }
 }
